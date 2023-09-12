@@ -6,10 +6,10 @@
 #define MODE 'M'
 
 void kmain(void) {
-  uart_init(UART_ADDR);
+	uart_init(UART_ADDR);
 
-  kprintf("Hello %s World!\n", ARCH);
-  kprintf("We are in %c-mode!\n", MODE);
+	kprintf("Hello %s World!\n", ARCH);
+	kprintf("We are in %c-mode!\n", MODE);
 
-  poweroff();
+	poweroff();
 }
