@@ -10,7 +10,8 @@ KERNEL_IMAGE=kmain
 QEMU=qemu-system-riscv64
 MACH=virt
 MEM=128M
-RUN=$(QEMU) -nographic -machine $(MACH) -m $(MEM)
+RUN=$(QEMU) -nographic -machine $(MACH) -m $(MEM)	
+# nographic equivelent to -serial stdio and no qemu window
 RUN+=-bios none -kernel $(KERNEL_IMAGE)
 
 # QEMU (debug)

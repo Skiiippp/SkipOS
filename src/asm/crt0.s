@@ -9,6 +9,11 @@ _start:
 	.option pop
 	la sp, __stack_top
 	add s0, sp, zero
+
+	#Set priv mode to M
+	li t0, 3 << 11
+	csrw mstatus, t0
+
 	jal zero, kmain
 	.cfi_endproc
 	.end
