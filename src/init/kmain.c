@@ -1,6 +1,7 @@
-#include "uart/uart.h"
-#include "syscon/syscon.h"
-#include "common/common.h"
+#include "../drivers/uart/uart.h"
+#include "../kernel/print.h"
+#include "../drivers/syscon/syscon.h"
+#include "../kernel/common.h"
 
 void kmain(void) {
 	uart_init(UART_ADDR);
