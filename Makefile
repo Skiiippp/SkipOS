@@ -29,7 +29,6 @@ $(iso): $(kernel) $(grub_cfg)
 $(kernel): $(assembly_object_files) $(linker_script)
 	@ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files)
 
-# compile assembly files
 build/%.o: src/%.asm
 	@mkdir -p $(shell dirname $@)
 	@nasm -felf64 $< -o $@
