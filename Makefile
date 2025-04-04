@@ -11,7 +11,7 @@ get_loopback_script := helper_scripts/get_loopback.py
 first_loopback := 0
 second_loopback := 0
 
-.PHONY: all clean run iso img
+.PHONY: all clean run img
 
 all: $(kernel)
 
