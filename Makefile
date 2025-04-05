@@ -1,52 +1,64 @@
-kernel := build/kernel.bin
-img := build/foo.img
+KERNEL := build/kernel.bin
+IMG := build/foo.img
 
-linker_script := src/linker.ld
-grub_cfg := src/grub.cfg
-assembly_source_files := $(wildcard src/*.asm)
-assembly_object_files := $(patsubst src/%.asm, \
-	build/%.o, $(assembly_source_files))
+LINKER_SCRIPT := core/boot/linker.ld
+GRUB_CFG := core/boot/grub.cfg
+ASM_SRC := $(wildcard core/boot/*.asm)
+ASM_OBJ := $(patsubst core/boot/%.asm, build/%.o, $(ASM_SRC))
+C_SRC := $(wildcard core/src/*.c)
+C_OBJ := $(patsubst core/src/%.c, build/%.o, $(C_SRC))
+TEST_SRC := $(wildcard unit_test/src/*.c)
+TEST_OBJ := $(patsubst unit_test/src/%.c, build/%.o, $(TEST_SRC))
 
-get_loopback_script := helper_scripts/get_loopback.py
-first_loopback := 0
-second_loopback := 0
+
+LOOP_SCRIPT := helper_scripts/get_loopback.py
+FST_LOOP := 0
+SEC_LOOP := 0
 
 .PHONY: all clean run img
 
-all: $(kernel)
+all: $(KERNEL)
 
 clean:
-	@rm -rf build
+	rm -rf build
 
-run: $(img)
-	qemu-system-x86_64 -s -drive format=raw,file=$(img) -serial stdio
+run: $(IMG)
+	qemu-system-x86_64 -s -drive format=raw,file=$(IMG) -serial stdio
 
-img: $(img)
+img: $(IMG)
 
-$(img) : $(kernel) $(grub_cfg)
-	$(eval first_loopback := $(shell python3 $(get_loopback_script)))
-	$(eval second_loopback := $(shell echo $$(( $(first_loopback) + 1 ))))
-	@dd if=/dev/zero of=$(img) bs=512 count=32768
-	@parted $(img) mklabel msdos
-	@parted $(img) mkpart primary ext2 2048s 30720s
-	@parted $(img) set 1 boot on
-	@sudo losetup /dev/loop$(first_loopback) $(img)
-	@sudo losetup /dev/loop$(second_loopback) $(img) -o 1048576
-	@sudo mkfs.ext2 /dev/loop$(second_loopback)
+$(IMG) : $(KERNEL) $(grub_cfg)
+	$(eval FST_LOOP := $(shell python3 $(LOOP_SCRIPT)))
+	$(eval SEC_LOOP := $(shell echo $$(($(FST_LOOP) + 1))))
+	@dd if=/dev/zero of=$(IMG) bs=512 count=32768
+	@parted $(IMG) mklabel msdos
+	@parted $(IMG) mkpart primary ext2 2048s 30720s
+	@parted $(IMG) set 1 boot on
+	@sudo losetup /dev/loop$(FST_LOOP) $(IMG)
+	@sudo losetup /dev/loop$(SEC_LOOP) $(IMG) -o 1048576
+	@sudo mkfs.ext2 /dev/loop$(SEC_LOOP)
 	@sudo mkdir -p /mnt/osfiles
-	@sudo mount /dev/loop$(second_loopback) /mnt/osfiles
-	@sudo grub-install --root-directory=/mnt/osfiles --target=i386-pc --no-floppy --modules="normal part_msdos ext2 multiboot" /dev/loop$(first_loopback)
+	@sudo mount /dev/loop$(SEC_LOOP) /mnt/osfiles
+	@sudo grub-install --root-directory=/mnt/osfiles --target=i386-pc --no-floppy --modules="normal part_msdos ext2 multiboot" /dev/loop$(FST_LOOP)
 	@mkdir -p build/imgfiles/boot/grub
-	@cp $(kernel) build/imgfiles/boot/kernel.bin
-	@cp $(grub_cfg) build/imgfiles/boot/grub
+	@cp $(KERNEL) build/imgfiles/boot/kernel.bin
+	@cp $(GRUB_CFG) build/imgfiles/boot/grub
 	@sudo cp -r build/imgfiles/* /mnt/osfiles
 	@sudo umount /mnt/osfiles
-	@sudo losetup -d /dev/loop$(first_loopback)
-	@sudo losetup -d /dev/loop$(second_loopback)
+	@sudo losetup -d /dev/loop$(FST_LOOP)
+	@sudo losetup -d /dev/loop$(SEC_LOOP)
 
-$(kernel): $(assembly_object_files) $(linker_script)
-	@ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files)
+$(KERNEL): $(LINKER_SCRIPT) $(ASM_OBJ) $(C_OBJ) $(TEST_OBJ)
+	ld -n -T $(LINKER_SCRIPT) -o $(KERNEL)  $(ASM_OBJ) $(C_OBJ) $(TEST_OBJ)
 
-build/%.o: src/%.asm
+build/%.o: core/boot/%.asm
 	@mkdir -p $(shell dirname $@)
-	@nasm -felf64 $< -o $@
+	nasm -felf64 $< -o $@
+
+build/%.o: core/src/%.c
+	@mkdir -p $(shell dirname $@)
+	x86_64-elf-gcc -c $< -o $@ -g
+
+build/%.o: unit_test/src/%.c
+	@mkdir -p $(shell dirname $@)
+	x86_64-elf-gcc -c $< -o $@ -g
