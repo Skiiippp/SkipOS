@@ -10,7 +10,7 @@
  * BEGIN PRIVATE
  */
 
-static inline void halt();
+
 
 /**
  * END PRIVATE
@@ -19,19 +19,25 @@ static inline void halt();
 int kernel_main()
 {
     int j = 0;
+    char s[2];    
     
 #ifdef RUN_UNIT_TESTS
     unit_main();
 #endif
 
-    while(!j);
+    //while(!j);
 
     VGA_clear();
 
-    while(1);
-}
+    s[0] = 'A';
+    s[1] = '\n';
 
-void halt()
-{
-    __asm__ __volatile__ ("hlt");
+    while(1)
+    {
+        VGA_display_str(s);
+        s[0] += 1;
+        for(int i = 0; i < 100000000; i++);
+    }
+
+    while(1);
 }

@@ -36,7 +36,7 @@ void string_test()
 void memset_test()
 {
     char arr[10];
-    uint32_t sum = 0;
+    u32 sum = 0;
 
 
     memset(arr, 13, 10);

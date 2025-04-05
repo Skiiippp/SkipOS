@@ -3,7 +3,7 @@
 #define assert(condition)   \
     do                      \
     {                       \
-        if (!condition)     \
+        if (!(condition))     \
         {                   \
             while(1);       \
         }                   \
