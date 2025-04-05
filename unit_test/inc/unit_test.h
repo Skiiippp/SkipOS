@@ -1,5 +1,3 @@
-#include "../../core/inc/assert.h"
-
 #define EXPECT_TRUE(condition)  \
     do                          \
     {                           \

@@ -25,6 +25,9 @@ clean:
 run: $(IMG)
 	qemu-system-x86_64 -s -drive format=raw,file=$(IMG) -serial stdio
 
+debug: $(IMG)
+	gdb -x helper_scripts/gdb_commands
+
 img: $(IMG)
 
 $(IMG) : $(KERNEL) $(grub_cfg)
