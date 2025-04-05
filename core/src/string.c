@@ -1,6 +1,7 @@
 #include "../inc/string.h"
 
 #include "../inc/assert.h"
+#include "../inc/stddef.h"
 
 /**
  * BEGIN PRIVATE DEF
@@ -72,12 +73,26 @@ int strcmp(const char *s1, const char *s2)
 
 const char *strchr(const char *s, int c)
 {
+    int index = 0;
     
-}
+    assert(s);
 
-char *strdup(const char *s)
-{
+    while(s[index] != '\0')
+    {
+        if(s[index] == c)
+        {
+            return &s[index];
+        }
 
+        index++;
+    }
+
+    if(c == '\0')
+    {
+        return &s[index+1];
+    }
+
+    return NULL;
 }
 
 size_t strval(const char *s)
@@ -90,6 +105,7 @@ size_t strval(const char *s)
     while(s[index] != '\0')
     {
         sum += (unsigned char)s[index];
+        index += 1;
     }
 
     return sum;

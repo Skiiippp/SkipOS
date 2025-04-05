@@ -9,4 +9,5 @@ int kernel_main()
     unit_main();
 #endif
 
+    while(1);
 }

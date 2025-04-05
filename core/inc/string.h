@@ -11,5 +11,3 @@ extern char *strcpy(char *dest, const char *src);
 extern int strcmp(const char *s1, const char *s2);
 
 extern const char *strchr(const char *s, int c);
-
-extern char *strdup(const char *s);
