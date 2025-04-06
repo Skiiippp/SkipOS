@@ -8,7 +8,7 @@
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
-#define VGA_CHAR_COUNT (VGA_WIDTH * VGA_HEIGHT)
+#define VGA_CELL_COUNT (VGA_WIDTH * VGA_HEIGHT)
 
 #define LIGHT_GREY 0x7
 #define BLACK 0x0
@@ -27,6 +27,7 @@ static u16 cursor = 0;
 static void write_char(char c);
 static void set_cursor();
 static void scroll();
+static void clear_bottom_row();
 
 /**
  * END PRIVATE
@@ -34,12 +35,12 @@ static void scroll();
 
 void VGA_clear()
 {
-    memset(vga_buff, 0, VGA_WIDTH * VGA_HEIGHT * sizeof(u16));
+    memset(vga_buff, VGA_COLOR_MASK, VGA_WIDTH * VGA_HEIGHT * sizeof(u16));
 }
 
 void VGA_display_char(char c)
 {
-    assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CHAR_COUNT);
+    assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CELL_COUNT);
 
     if(c == '\n')
     {
@@ -72,7 +73,7 @@ void VGA_display_char(char c)
 
     set_cursor();
 
-    assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CHAR_COUNT);
+    assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CELL_COUNT);
 }
 
 void VGA_display_str(const char *s)
@@ -95,17 +96,20 @@ void write_char(char c)
 
 void set_cursor()
 {
-    assert(cursor < VGA_CHAR_COUNT);
+    assert(cursor < VGA_CELL_COUNT);
     cursor = x_pos + y_pos * VGA_WIDTH;
 }
 
 void scroll()
 {
-    u16 temp_vga_buff[VGA_CHAR_COUNT];
+    u16 temp_vga_buff[VGA_CELL_COUNT];
 
-    memcpy(temp_vga_buff, vga_buff, VGA_CHAR_COUNT * sizeof(u16));
+    memcpy(temp_vga_buff, vga_buff, VGA_CELL_COUNT * sizeof(u16));
+    memcpy(vga_buff, temp_vga_buff + VGA_WIDTH, (VGA_CELL_COUNT - VGA_WIDTH) * sizeof(u16));
+    clear_bottom_row();
+}
 
-    VGA_clear();
-
-    memcpy(vga_buff, temp_vga_buff + VGA_WIDTH, (VGA_CHAR_COUNT - VGA_WIDTH) * sizeof(u16));
+void clear_bottom_row()
+{
+    memset(vga_buff + VGA_CELL_COUNT - VGA_WIDTH, VGA_COLOR_MASK, VGA_WIDTH * sizeof(u16));
 }
