@@ -1,6 +1,9 @@
 #define NULL (void *)0
 
+#define UINTPTR_MAX 0xFFFFFFFFFFFFFFFFUL
+
 typedef unsigned long size_t;
+typedef unsigned long uintptr_t;
 
 typedef char bool;
 
