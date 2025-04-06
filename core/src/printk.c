@@ -45,7 +45,9 @@ static char int_to_char(u8 val);
 
 void test()
 {
-    print_hex32(0xDEADBEEF);
+    print_u16(sizeof(void *));
+    print_char('\n');
+    print_u16(sizeof(u64));
 }
 
 int printk(const char *fmt, ...)
@@ -72,7 +74,7 @@ void print_str(const char *s)
 
 void print_ptr(const void *p)
 {
-    //print_hex64((u64)p);
+    print_hex64((u64)p);
 }
 
 void print_s16(s16 val)

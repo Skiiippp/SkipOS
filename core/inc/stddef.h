@@ -14,7 +14,7 @@ typedef int s32;
 typedef unsigned int u32;
 
 typedef long s64;
-typedef unsigned int u64;
+typedef unsigned long u64;
 
 typedef long long s128;
 typedef unsigned long long u128;
