@@ -1,4 +1,4 @@
-#include "../inc/vga_display.h"
+#include "../inc/vga.h"
 
 #include "../inc/string.h"
 #include "../inc/stddef.h"

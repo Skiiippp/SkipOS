@@ -2,7 +2,7 @@
 
 #include "../inc/assert.h"
 #include "../inc/stddef.h"
-#include "../inc/vga_display.h"
+#include "../inc/vga.h"
 
 #include <stdarg.h>
 #include <limits.h>

@@ -60,8 +60,8 @@ build/%.o: core/boot/%.asm
 
 build/%.o: core/src/%.c
 	@mkdir -p $(shell dirname $@)
-	x86_64-elf-gcc -c $< -o $@ -g
+	x86_64-elf-gcc -c $< -o $@ -g -masm=intel
 
 build/%.o: unit_test/src/%.c
 	@mkdir -p $(shell dirname $@)
-	x86_64-elf-gcc -c $< -o $@ -g
+	x86_64-elf-gcc -c $< -o $@ -g -masm=intel

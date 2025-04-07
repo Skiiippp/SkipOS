@@ -1,7 +1,8 @@
-#include "../inc/vga_display.h"
 #include "../inc/string.h"
 #include "../inc/printk.h"
 #include "../inc/stddef.h"
+#include "../inc/vga.h"
+#include "../inc/keyboard.h"
 
 #include <limits.h>
 
@@ -22,7 +23,6 @@ static void printk_test();
 int kernel_main()
 {
     int j = 0;
-    char s[2];    
     
 #ifdef RUN_UNIT_TESTS
     unit_main();
@@ -31,8 +31,11 @@ int kernel_main()
     //while(!j);
 
     VGA_clear();
+    init_keyboard();
 
-    printk_test();
+    //printk_test();
+
+    
 
     while(1);
 }
