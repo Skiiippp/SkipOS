@@ -1,1 +1,3 @@
-extern void init_keyboard();
+extern void KBD_init();
+
+extern void KBD_run();

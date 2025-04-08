@@ -9,6 +9,7 @@
 #include "../inc/stddef.h"
 #include "../inc/assert.h"
 #include "../inc/printk.h"
+#include "../inc/scan_code.h"
 
 /**
  * BEGIN PRIVATE
@@ -47,6 +48,10 @@
 #define KBD_SET_SCAN_CODE_CMD 0xF0
 #define KBD_SET_SCAN_CODE_2_DATA 2
 #define KBD_ENABLE_SCAN_CMD 0xF4
+
+#define L_SHIFT_SCODE 0x12
+#define R_SHIFT_SCODE 0x59
+#define RELEASED_SCODE 0xF0
 
 static void disable_p1();
 
@@ -95,10 +100,8 @@ static void enable_scanning();
  * END PRIVATE
  */
 
-void init_keyboard()
+void KBD_init()
 {
-    u8 read_byte;
-
     disable_p1();
 
     disable_p2();
@@ -112,14 +115,33 @@ void init_keyboard()
     reset_kbd();
 
     set_kbd_scan_code_2();
+}
 
-    printk("KBD Initialized\n");
+void KBD_run()
+{
+    u8 s;
+    char c;
+    bool shift_pressed = false;
 
     while(1)
     {
-       read_byte = recv_kbd_byte();
-       
-       printk("Scan code: %x\n", read_byte);
+        // Released?
+        if ((s = recv_kbd_byte()) == RELEASED_SCODE)
+        {
+            if ((s = recv_kbd_byte()) == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+            {
+                shift_pressed = false;
+            }
+        }
+        else if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+        {
+            shift_pressed = true;
+        }
+        else
+        {
+            c = char_from_scode(s, shift_pressed);
+            printk("%c", c);
+        }
     }
 }
 

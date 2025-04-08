@@ -31,11 +31,10 @@ int kernel_main()
     //while(!j);
 
     VGA_clear();
-    init_keyboard();
-
-    //printk_test();
-
     
+    KBD_init();
+
+    KBD_run();
 
     while(1);
 }

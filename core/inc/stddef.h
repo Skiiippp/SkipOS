@@ -6,6 +6,8 @@ typedef unsigned long size_t;
 typedef unsigned long uintptr_t;
 
 typedef char bool;
+#define true 1
+#define false 0
 
 typedef char s8;
 typedef unsigned char u8;
