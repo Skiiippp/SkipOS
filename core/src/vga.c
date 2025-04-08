@@ -25,8 +25,11 @@ static u16 cursor = 0;
  */
 
 static void write_char(char c);
+
 static void set_cursor();
+
 static void scroll();
+
 static void clear_bottom_row();
 
 /**
@@ -86,6 +89,16 @@ void VGA_display_str(const char *s)
     {
         VGA_display_char(s[index]);
         index += 1;
+    }
+}
+
+void VGA_backspace_char()
+{
+    if (x_pos != 0)
+    {
+        x_pos -= 1;
+        set_cursor();
+        vga_buff[cursor] = VGA_COLOR_MASK;
     }
 }
 

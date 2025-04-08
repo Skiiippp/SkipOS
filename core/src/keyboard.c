@@ -8,8 +8,8 @@
 #include "../inc/port_io.h"
 #include "../inc/common.h"
 #include "../inc/assert.h"
-#include "../inc/printk.h"
 #include "../inc/scan_code.h"
+#include "../inc/vga.h"
 
 /**
  * BEGIN PRIVATE
@@ -52,6 +52,7 @@
 #define L_SHIFT_SCODE 0x12
 #define R_SHIFT_SCODE 0x59
 #define RELEASED_SCODE 0xF0
+#define BACKSPACE_SCODE 0x66
 
 static void disable_p1();
 
@@ -137,10 +138,14 @@ void KBD_run()
         {
             shift_pressed = true;
         }
+        else if(s == BACKSPACE_SCODE)
+        {
+            VGA_backspace_char();
+        }
         else
         {
             c = char_from_scode(s, shift_pressed);
-            printk("%c", c);
+            VGA_display_char(c);
         }
     }
 }
