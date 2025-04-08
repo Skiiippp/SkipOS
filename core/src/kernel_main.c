@@ -1,6 +1,6 @@
 #include "../inc/string.h"
 #include "../inc/printk.h"
-#include "../inc/stddef.h"
+#include "../inc/common.h"
 #include "../inc/vga.h"
 #include "../inc/keyboard.h"
 

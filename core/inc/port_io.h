@@ -1,4 +1,6 @@
-#include "stddef.h"
+#pragma once
+
+#include "common.h"
 
 /**
  * @brief Write a byte to a port

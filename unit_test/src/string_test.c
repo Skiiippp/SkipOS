@@ -4,8 +4,10 @@
 
 #include "../inc/unit_test.h"
 
+#include <stddef.h>
+
 #include "../../core/inc/string.h"
-#include "../../core/inc/stddef.h"
+#include "../../core/inc/common.h"
 
 
 /**

@@ -1,7 +1,7 @@
 #include "../inc/vga.h"
 
 #include "../inc/string.h"
-#include "../inc/stddef.h"
+#include "../inc/common.h"
 #include "../inc/assert.h"
 
 #define VGA_BASE 0xb8000

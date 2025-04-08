@@ -1,7 +1,9 @@
 #include "../inc/string.h"
 
+#include <stddef.h>
+
 #include "../inc/assert.h"
-#include "../inc/stddef.h"
+#include "../inc/common.h"
 
 /**
  * BEGIN PRIVATE DEF

@@ -1,5 +1,6 @@
+#pragma once
+
 #include <stdint-gcc.h>
-#include <stddef.h>
 
 typedef unsigned long size_t;
 typedef unsigned long uintptr_t;

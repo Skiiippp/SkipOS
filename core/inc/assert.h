@@ -1,9 +1,11 @@
-#include "stddef.h"
+#pragma once
+
+#include "common.h"
 
 #define assert(condition)   \
     do                      \
     {                       \
-        if (!(condition))     \
+        if (!(condition))    \
         {                   \
             while(1);       \
         }                   \

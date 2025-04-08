@@ -1,4 +1,6 @@
-#include "stddef.h"
+#pragma once
+
+#include "common.h"
 
 extern void *memset(void *s, int c, size_t n);
 

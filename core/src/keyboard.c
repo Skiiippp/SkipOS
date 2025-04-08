@@ -6,7 +6,7 @@
 #include "../inc/keyboard.h"
 
 #include "../inc/port_io.h"
-#include "../inc/stddef.h"
+#include "../inc/common.h"
 #include "../inc/assert.h"
 #include "../inc/printk.h"
 #include "../inc/scan_code.h"

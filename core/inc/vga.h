@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * @brief Control output to the VGA console
  */

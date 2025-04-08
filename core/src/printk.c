@@ -1,7 +1,7 @@
 #include "../inc/printk.h"
 
 #include "../inc/assert.h"
-#include "../inc/stddef.h"
+#include "../inc/common.h"
 #include "../inc/vga.h"
 
 #include <stdarg.h>
@@ -22,23 +22,23 @@ static void print_char(char c);
 static void print_str(const char *s);
 static void print_ptr(const void *p);
 
-static void print_s16(s16 val);
-static void print_u16(u16 val);
-static void print_hex16(u16 val);
+static void print_short(short val);
+static void print_unsigned_short(unsigned short val);
+static void print_hex_short(unsigned short val);
 
-static void print_s32(s32 val);
-static void print_u32(u32 val);
-static void print_hex32(u32 val);
+static void print_int(int val);
+static void print_unsigned_int(unsigned int val);
+static void print_hex_int(unsigned int val);
 
-static void print_s64(s64 val);
-static void print_u64(u64 val);
-static void print_hex64(u64 val);
+static void print_long(long val);
+static void print_unsigned_long(unsigned long val);
+static void print_hex_long(unsigned long val);
 
-static void print_s128(s128 val);
-static void print_u128(u128 val);
-static void print_hex128(u128 val, Case cs);
+static void print_long_long(long long val);
+static void print_unsigned_long_long(unsigned long long val);
+static void print_hex_long_long(unsigned long long val, Case cs);
 
-static void print_u128_varbase(u128 val, u8 base, Case cs);
+static void print_unsigned_long_long_varbase(unsigned long long val, u8 base, Case cs);
 
 // Single digit!
 static char int_to_char(u8 val, Case cs);
@@ -84,13 +84,13 @@ int printk(const char *fmt, ...)
                     print_ptr(va_arg(args, const void *));
                     break;
                 case 'd':
-                    print_s32(va_arg(args, s32));
+                    print_int(va_arg(args, int));
                     break;
                 case 'u':
-                    print_u32(va_arg(args, u32));
+                    print_unsigned_int(va_arg(args, unsigned int));
                     break;
                 case 'x':
-                    print_hex32(va_arg(args, u32));
+                    print_hex_int(va_arg(args, unsigned int));
                     break;
                 case 'h':
                     fmt++;
@@ -98,13 +98,13 @@ int printk(const char *fmt, ...)
                     switch(*fmt)
                     {
                         case 'd':
-                            print_s16((s16)va_arg(args, int));
+                            print_short((short)va_arg(args, int));
                             break;
                         case 'u':
-                            print_u16((u16)va_arg(args, unsigned int));
+                            print_unsigned_short((unsigned short)va_arg(args, unsigned int));
                             break;
                         case 'x':
-                            print_hex16((u16)va_arg(args, unsigned int));
+                            print_hex_short((unsigned short)va_arg(args, unsigned int));
                             break;
                         default: assert(0);
                     }
@@ -115,13 +115,13 @@ int printk(const char *fmt, ...)
                     switch(*fmt)
                     {
                         case 'd':
-                            print_s64(va_arg(args, s64));
+                            print_long(va_arg(args, long));
                             break;
                         case 'u':
-                            print_u64(va_arg(args, u64));
+                            print_unsigned_long(va_arg(args, unsigned long));
                             break;
                         case 'x':
-                            print_hex64(va_arg(args, u64));
+                            print_hex_long(va_arg(args, unsigned long));
                             break;
                         default: assert(0);
                     }
@@ -132,13 +132,13 @@ int printk(const char *fmt, ...)
                     switch(*fmt)
                     {
                         case 'd':
-                            print_s128(va_arg(args, s128));
+                            print_long_long(va_arg(args, long long));
                             break;
                         case 'u':
-                            print_u128(va_arg(args, u128));
+                            print_unsigned_long_long(va_arg(args, unsigned long long));
                             break;
                         case 'x':
-                            print_hex128(va_arg(args, u128), LOWERCASE);
+                            print_hex_long_long(va_arg(args, unsigned long long), LOWERCASE);
                             break;
                         default: assert(0);
                     }
@@ -169,81 +169,81 @@ void print_ptr(const void *p)
 {
     // "Should" be 64 cuz ptr is 64 bits but case issue makes 128 easier
     VGA_display_str("0x"); 
-    print_hex128((u64)p, UPPERCASE);
+    print_hex_long_long((unsigned long)p, UPPERCASE);
 }
 
-void print_s16(s16 val)
+void print_short(short val)
 {
-    print_s128(val);
+    print_long_long(val);
 }
 
-void print_u16(u16 val)
+void print_unsigned_short(unsigned short val)
 {
-    print_u128(val);
+    print_unsigned_long_long(val);
 }
 
-void print_hex16(u16 val)
+void print_hex_short(unsigned short val)
 {
-    print_hex128(val, LOWERCASE);
+    print_hex_long_long(val, LOWERCASE);
 }
 
-void print_s32(s32 val)
+void print_int(int val)
 {
-    print_s128(val);
+    print_long_long(val);
 }
 
-void print_u32(u32 val)
+void print_unsigned_int(unsigned int val)
 {
-    print_u128(val);
+    print_unsigned_long_long(val);
 }
 
-void print_hex32(u32 val)
+void print_hex_int(unsigned int val)
 {
-    print_hex128(val, LOWERCASE);
+    print_hex_long_long(val, LOWERCASE);
 }
 
-void print_s64(s64 val)
+void print_long(long val)
 {
-    print_s128(val);
+    print_long_long(val);
 }
 
-void print_u64(u64 val)
+void print_unsigned_long(unsigned long val)
 {
-    print_u128(val);
+    print_unsigned_long_long(val);
 }
 
-void print_hex64(u64 val)
+void print_hex_long(unsigned long val)
 {
-    print_hex128(val, LOWERCASE);
+    print_hex_long_long(val, LOWERCASE);
 }
 
-void print_s128(s128 val)
+void print_long_long(long long val)
 {
     if(val < 0)
     {
         VGA_display_char('-');
-        print_u128((u128)(val * -1));
+        print_unsigned_long_long((unsigned long long)(val * -1));
     }
     else
     {
-        print_u128((u128)val);
+        print_unsigned_long_long((unsigned long long)val);
     }
 }
 
-void print_u128(u128 val)
+void print_unsigned_long_long(unsigned long long val)
 {
-    print_u128_varbase(val, 10, LOWERCASE);
+    print_unsigned_long_long_varbase(val, 10, LOWERCASE);
 }
 
-void print_hex128(u128 val, Case cs)
+void print_hex_long_long(unsigned long long val, Case cs)
 {
-    print_u128_varbase(val, 16, cs);
+    print_unsigned_long_long_varbase(val, 16, cs);
 }
 
-static void print_u128_varbase(u128 val, u8 base, Case cs)
+static void print_unsigned_long_long_varbase(unsigned long long val, u8 base, Case cs)
 {
     char tmp_buff[OUTBUFFSIZE];
-    s8 index = 0;
+    char index = 0;
 
     if(val == 0)
     {
