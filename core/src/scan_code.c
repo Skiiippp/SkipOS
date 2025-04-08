@@ -25,6 +25,7 @@ ScodeMapElem sc_map[] = {{'a', 'A', 0x1C}, {'b', 'B', 0x32}, {'c', 'C', 0x21}, {
  * END PRIVATE
  */
 
+// TODO: Use lookup table instead of looping
 char char_from_scode(u8 scode, bool shift_pressed)
 {
     size_t map_size = sizeof(sc_map);
