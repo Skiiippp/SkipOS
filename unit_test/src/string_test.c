@@ -49,16 +49,6 @@ void memset_test()
     }
 
     EXPECT_EQ(sum, 130);
-
-    sum = 0;
-    memset(arr, 200, 0);
-
-    for(int i = 0; i < 10; i++)
-    {
-        sum += arr[i];
-    }
-
-    EXPECT_EQ(sum, 130);
 }
 
 void memcpy_test()

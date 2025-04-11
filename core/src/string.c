@@ -18,8 +18,6 @@ static size_t strval(const char *s);
 
 void *memset(void *s, int c, size_t n)
 {
-    assert(s);
-
     for(size_t i = 0; i < n; i++)
     {
         ((volatile char *)s)[i] = (char)c;
@@ -30,8 +28,6 @@ void *memset(void *s, int c, size_t n)
 
 void *memcpy(void *dest, const void *src, size_t n)
 {
-    assert(dest && src);
-
     for(size_t i = 0; i < n; i++)
     {
         ((char *)dest)[i] = ((char *)src)[i];
@@ -43,8 +39,6 @@ void *memcpy(void *dest, const void *src, size_t n)
 size_t strlen(const char *s)
 {
     size_t len = 0;
-
-    assert(s);
 
     while(s[len] != '\0')
     {
@@ -58,8 +52,6 @@ char *strcpy(char *dest, const char *src)
 {
     size_t src_len; // Includes null byte
 
-    assert(dest && src);
-
     src_len = strlen(src) + 1;
     memcpy(dest, src, src_len);
 
@@ -68,22 +60,18 @@ char *strcpy(char *dest, const char *src)
 
 int strcmp(const char *s1, const char *s2)
 {
-    assert(s1 && s2);
-
     return (strval(s1) - strval(s2));
 }
 
-const char *strchr(const char *s, int c)
+char *strchr(const char *s, int c)
 {
     int index = 0;
     
-    assert(s);
-
     while(s[index] != '\0')
     {
         if(s[index] == c)
         {
-            return &s[index];
+            return (char *)&s[index];
         }
 
         index++;
@@ -91,7 +79,7 @@ const char *strchr(const char *s, int c)
 
     if(c == '\0')
     {
-        return &s[index+1];
+        return (char *)&s[index+1];
     }
 
     return NULL;

@@ -243,7 +243,7 @@ void print_hex_long_long(unsigned long long val, Case cs)
 static void print_unsigned_long_long_varbase(unsigned long long val, u8 base, Case cs)
 {
     char tmp_buff[OUTBUFFSIZE];
-    char index = 0;
+    u8 index = 0;
 
     if(val == 0)
     {

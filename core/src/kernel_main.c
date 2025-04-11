@@ -14,7 +14,7 @@
  * BEGIN PRIVATE
  */
 
-static void printk_test();
+//static void printk_test();
 
 /**
  * END PRIVATE
@@ -22,7 +22,7 @@ static void printk_test();
 
 int kernel_main()
 {
-    int j = 0;
+    //int j = 0;
     
 #ifdef RUN_UNIT_TESTS
     unit_main();
@@ -41,6 +41,7 @@ int kernel_main()
     while(1);
 }
 
+/*
 void printk_test()
 {
     printk("%c\n", 'a'); // should be "a"
@@ -65,3 +66,4 @@ void printk_test()
     printk("%qd\n", LONG_MAX); // "9223372036854775807"
     printk("%qu\n", ULONG_MAX); // "18446744073709551615"
 }
+    */

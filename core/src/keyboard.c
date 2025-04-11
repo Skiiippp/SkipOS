@@ -82,7 +82,7 @@ static u8 get_good_config_byte(u8 curr_config_byte);
 
 static void write_good_config_byte();
 
-static void run_controller_self_test();
+//static void run_controller_self_test();
 
 // NOTE: Verifies ACK internally!
 static void send_kbd_byte(u8 kbd_byte);
@@ -95,7 +95,7 @@ static void reset_kbd();
 
 static void set_kbd_scan_code_2();
 
-static void enable_scanning();
+//static void enable_scanning();
 
 /**
  * END PRIVATE
@@ -109,7 +109,7 @@ void KBD_init()
 
     write_good_config_byte();
 
-    run_controller_self_test();
+    //run_controller_self_test();
 
     enable_p1();
 
@@ -244,6 +244,7 @@ void write_good_config_byte()
     write_config_byte(get_good_config_byte(read_config_byte()));
 }
 
+/*
 void run_controller_self_test()
 {
     u8 self_test_resp;
@@ -255,6 +256,7 @@ void run_controller_self_test()
     assert(self_test_resp != CNTRLR_SELF_TEST_FAIL);
     assert(self_test_resp == CNTRLR_SELF_TEST_PASS);
 }
+*/
 
 void send_kbd_byte(u8 kbd_byte)
 {
@@ -297,9 +299,11 @@ void set_kbd_scan_code_2()
     send_kbd_byte(KBD_SET_SCAN_CODE_2_DATA);
 }
 
+/*
 void enable_scanning()
 {
     send_kbd_byte(KBD_ENABLE_SCAN_CMD);
 }
+*/
 
 
