@@ -167,7 +167,7 @@ void enable_p1()
 
 u8 read_status_byte()
 {
-    return rb_port(IO_P_2);
+    return inb(IO_P_2);
 }
 
 void wait_read_data()
@@ -195,18 +195,18 @@ void wait_write_data()
 u8 read_data_byte()
 {
     wait_read_data();
-    return rb_port(IO_P_1);
+    return inb(IO_P_1);
 }
 
 static void write_data_byte(u8 data_byte)
 {
     wait_write_data();
-    wb_port(IO_P_1, data_byte);
+    outb(IO_P_1, data_byte);
 }
 
 void write_command_byte(u8 command_byte)
 {
-    wb_port(IO_P_2, command_byte);
+    outb(IO_P_2, command_byte);
 }
 
 void write_two_command_bytes(u8 fst_cmd_byte, u8 sec_cmd_byte)

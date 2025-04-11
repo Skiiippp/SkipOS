@@ -1,15 +1,15 @@
 #include "../inc/port_io.h"
 
-void wb_port(u16 port, u8 wbyte)
+inline void outb(u16 port, u8 val)
 {
-    asm volatile ("outb %0, %1" : : "id" (port), "a" (wbyte));
+    asm volatile ("outb %0, %1" : : "id" (port), "a" (val));
 }
 
-u8 rb_port(u16 port)
+u8 inb(u16 port)
 {
-    u8 rbyte;
+    u8 val;
 
-    asm volatile ("inb %0, %1" : "=a" (rbyte) : "id" (port));
+    asm volatile ("inb %0, %1" : "=a" (val) : "id" (port));
 
-    return rbyte;
+    return val;
 }
