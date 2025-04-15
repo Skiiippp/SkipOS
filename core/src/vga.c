@@ -30,6 +30,14 @@ static void set_cursor();
 
 static void scroll();
 
+// UNUSED
+//static void clear_at_coord(u16 x, u16 y);
+
+static void clear_at_offset(u16 offset);
+
+// Offset into VGA buff
+static u16 get_offset_from_coord(u16 x, u16 y);
+
 static void clear_bottom_row();
 
 /**
@@ -38,7 +46,10 @@ static void clear_bottom_row();
 
 void VGA_clear()
 {
-    memset(vga_buff, VGA_COLOR_MASK, VGA_WIDTH * VGA_HEIGHT * sizeof(u16));
+    for (u16 offset = 0; offset < VGA_CELL_COUNT; offset++)
+    {
+        clear_at_offset(offset);
+    }
 }
 
 void VGA_display_char(char c)
@@ -110,7 +121,7 @@ void write_char(char c)
 void set_cursor()
 {
     assert(cursor < VGA_CELL_COUNT);
-    cursor = x_pos + y_pos * VGA_WIDTH;
+    cursor = get_offset_from_coord(x_pos, y_pos);
 }
 
 void scroll()
@@ -122,7 +133,28 @@ void scroll()
     clear_bottom_row();
 }
 
+u16 get_offset_from_coord(u16 x, u16 y)
+{
+    return x + y * VGA_WIDTH;
+}
+
+/* UNUSED
+void clear_at_coord(u16 x, u16 y)
+{
+    clear_at_offset(get_offset_from_coord(x, y));
+}
+*/
+
+void clear_at_offset(u16 offset)
+{
+    assert(offset < VGA_CELL_COUNT);
+    vga_buff[offset] = VGA_COLOR_MASK;
+}
+
 void clear_bottom_row()
 {
-    memset(vga_buff + VGA_CELL_COUNT - VGA_WIDTH, VGA_COLOR_MASK, VGA_WIDTH * sizeof(u16));
+    for (u16 offset = get_offset_from_coord(0, VGA_HEIGHT - 1); offset < VGA_CELL_COUNT; offset++)
+    {
+        clear_at_offset(offset);
+    }
 }

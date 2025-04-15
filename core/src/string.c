@@ -18,9 +18,11 @@ static size_t strval(const char *s);
 
 void *memset(void *s, int c, size_t n)
 {
+    assert(c <= UINT8_MAX);
+
     for(size_t i = 0; i < n; i++)
     {
-        ((volatile char *)s)[i] = (char)c;
+        ((char *)s)[i] = (char)c;
     }
 
     return s;
