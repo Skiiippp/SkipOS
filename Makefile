@@ -3,8 +3,10 @@ IMG := build/foo.img
 
 LINKER_SCRIPT := core/boot/linker.ld
 GRUB_CFG := core/boot/grub.cfg
-ASM_SRC := $(wildcard core/boot/*.asm)
-ASM_OBJ := $(patsubst core/boot/%.asm, build/%.o, $(ASM_SRC))
+BOOT_ASM_SRC := $(wildcard core/boot/*.asm)
+BOOT_ASM_OBJ := $(patsubst core/boot/%.asm, build/%.o, $(BOOT_ASM_SRC))
+GEN_ASM_SRC := $(wildcard core/src/*.asm)
+GEN_ASM_OBJ := $(patsubst core/src/%.asm, build/%.o, $(GEN_ASM_SRC))
 C_SRC := $(wildcard core/src/*.c)
 C_OBJ := $(patsubst core/src/%.c, build/%.o, $(C_SRC))
 UNIT_TEST_SRC := $(wildcard unit_test/src/*.c)
@@ -12,10 +14,11 @@ UNIT_TEST_OBJ := $(patsubst unit_test/src/%.c, build/%.o, $(UNIT_TEST_SRC))
 SYSTEM_TEST_SRC := $(wildcard system_test/src/*.c)
 SYSTEM_TEST_OBJ := $(patsubst system_test/src/%.c, build/%.o, $(SYSTEM_TEST_SRC))
 
-
 LOOP_SCRIPT := helper_scripts/get_loopback.py
 FST_LOOP := 0
 SEC_LOOP := 0
+
+ISR_GEN_SCRIPT := helper_scripts/generate_isrs.py
 
 .PHONY: all clean run img
 
@@ -53,10 +56,15 @@ $(IMG) : $(KERNEL) $(grub_cfg)
 	@sudo losetup -d /dev/loop$(FST_LOOP)
 	@sudo losetup -d /dev/loop$(SEC_LOOP)
 
-$(KERNEL): $(LINKER_SCRIPT) $(ASM_OBJ) $(C_OBJ) $(UNIT_TEST_OBJ) $(SYSTEM_TEST_OBJ)
-	ld -n -T $(LINKER_SCRIPT) -o $(KERNEL)  $(ASM_OBJ) $(C_OBJ) $(UNIT_TEST_OBJ) $(SYSTEM_TEST_OBJ)
+$(KERNEL): $(ISR_GEN_SCRIPT) $(LINKER_SCRIPT) $(BOOT_ASM_OBJ) $(GEN_ASM_OBJ) $(C_OBJ) $(UNIT_TEST_OBJ) $(SYSTEM_TEST_OBJ)
+	ld -n -T $(LINKER_SCRIPT) -o $(KERNEL)  $(BOOT_ASM_OBJ) $(GEN_ASM_OBJ) $(C_OBJ) $(UNIT_TEST_OBJ) $(SYSTEM_TEST_OBJ)
 
-build/%.o: core/boot/%.asm
+build/%.o: core/boot/%.asm 
+	@mkdir -p $(shell dirname $@)
+	nasm -felf64 $< -o $@
+
+build/%.o: core/src/%.asm $(ISR_GEN_SCRIPT)
+	@python3 $(ISR_GEN_SCRIPT) > core/src/isr_entry.asm
 	@mkdir -p $(shell dirname $@)
 	nasm -felf64 $< -o $@
 

@@ -14,8 +14,9 @@
  * BEGIN PRIVATE
  */
 
-#define RUN_UNIT_TESTS
-#define RUN_SYSTEM_TESTS
+//#define RUN_UNIT_TESTS
+//#define RUN_SYSTEM_TESTS
+//define DBG
 
 /**
  * END PRIVATE
@@ -23,8 +24,6 @@
 
 int kernel_main()
 {
-    VGA_clear();
-
 #ifdef RUN_UNIT_TESTS
     ut_main();
 #endif
@@ -33,7 +32,18 @@ int kernel_main()
     st_main();
 #endif
 
+#ifdef DBG
+    int j = 0;
+    while(!j);
+#endif
+
+    VGA_clear();
+
     KBD_init();
+
+    IRQ_init();
+
+    asm volatile ("int 42");
 
     KBD_run();
 
