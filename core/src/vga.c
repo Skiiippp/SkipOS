@@ -3,6 +3,7 @@
 #include "../inc/string.h"
 #include "../inc/common.h"
 #include "../inc/assert.h"
+#include "../inc/interrupt.h"
 
 #define VGA_BASE 0xb8000
 
