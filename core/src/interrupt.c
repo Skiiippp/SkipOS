@@ -2,16 +2,11 @@
 
 #include "../inc/common.h"
 #include "../inc/assert.h"
-#include "../inc/port_io.h"
+#include "../inc/pic.h"
 
 /**
  * BEGIN PRIVATE
  */
-
-#define PIC1_CMD_PORT 0x20
-#define PIC1_DATA_PORT 0x21
-#define PIC2_CMD_PORT 0xA0
-#define PIC2_DATA_PORT 0xA1
 
 #define IDT_ENTRY_CNT 256
 #define ISR_CNT IDT_ENTRY_CNT
@@ -45,6 +40,8 @@ void idt_set_descriptor(u8 idt_index, void *isr, u8 attributes);
  
 void idt_populate();
 
+void idt_load_idtr();
+
 /**
  * END PRIVATE
  */
@@ -55,14 +52,9 @@ void IRQ_init()
 
     idt_populate();
 
-    // Set up IDT and stuff
-    idtr.base = (uintptr_t)&idt[0];
-    idtr.limit = (uint16_t)sizeof(idt_entry_t) * IDT_ENTRY_CNT - 1;
-    asm volatile ("lidt %0" : : "m"(idtr));
+    idt_load_idtr();
 
-    // Mask PIC (for now)
-    outb(0x21, 0xFF);
-    outb(0xA0, 0xFF);
+    disable_pic();
 
     STI;
 }
@@ -87,4 +79,18 @@ void idt_populate()
     {
         idt_set_descriptor(i, isr_table[i], 0x8E);
     }
+}
+
+void idt_load_idtr()
+{
+    idtr.base = (uintptr_t)&idt[0];
+    idtr.limit = (uint16_t)sizeof(idt_entry_t) * IDT_ENTRY_CNT - 1;
+    asm volatile ("lidt %0" : : "m"(idtr));
+}
+
+void general_handler(u8 index, u64 error)
+{
+    (void)index;
+    (void)error;
+    while(1);
 }

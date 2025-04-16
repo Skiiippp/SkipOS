@@ -43,7 +43,10 @@ int kernel_main()
 
     IRQ_init();
 
-    asm volatile ("int 42");
+    // Trigger page fault
+    volatile int* ptr = (int*)0xFFFFFFFF00000000;
+    int val = *ptr;
+    (void)val;
 
     KBD_run();
 
