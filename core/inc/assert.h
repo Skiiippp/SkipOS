@@ -7,7 +7,7 @@
     {                       \
         if (!(condition))    \
         {                   \
-            while(1);       \
+            asm volatile ("cli\nhlt");   \
         }                   \
     }                       \
     while(0)                \

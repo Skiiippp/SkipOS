@@ -10,6 +10,10 @@
 #include "../inc/assert.h"
 #include "../inc/scan_code.h"
 #include "../inc/vga.h"
+#include "../inc/interrupt.h"
+#include "../inc/printk.h"
+
+#include <stddef.h>
 
 /**
  * BEGIN PRIVATE
@@ -54,9 +58,19 @@
 #define RELEASED_SCODE 0xF0
 #define BACKSPACE_SCODE 0x66
 
+#define KBD_INT_NUM 0x21
+
+typedef struct
+{
+    u8 recv_byte;
+    bool irq_flag;
+} irq_info;
+
 static void disable_p1();
 
 static void disable_p2();
+
+static void flush_buff();
 
 static void enable_p1();
 
@@ -82,7 +96,7 @@ static u8 get_good_config_byte(u8 curr_config_byte);
 
 static void write_good_config_byte();
 
-//static void run_controller_self_test();
+static void __attribute__((unused)) run_controller_self_test();
 
 // NOTE: Verifies ACK internally!
 static void send_kbd_byte(u8 kbd_byte);
@@ -91,11 +105,20 @@ static void verify_kbd_ack(u8 kbd_sent_byte);
 
 static u8 recv_kbd_byte();
 
+// Version of recv_kbd_byte() that uses isrs.
+static u8 isr_recv_kbd_byte();
+
 static void reset_kbd();
 
 static void set_kbd_scan_code_2();
 
+static void register_kbd_isr();
+
+static void kbd_isr_handler(u8 irq_num, u32 error, void *arg);
+
 //static void enable_scanning();
+
+static irq_info info = {.irq_flag = false};
 
 /**
  * END PRIVATE
@@ -107,6 +130,8 @@ void KBD_init()
 
     disable_p2();
 
+    flush_buff();
+
     write_good_config_byte();
 
     //run_controller_self_test();
@@ -116,6 +141,10 @@ void KBD_init()
     reset_kbd();
 
     set_kbd_scan_code_2();
+
+    register_kbd_isr();
+
+    IRQ_enable_index(KBD_INT_NUM);
 }
 
 void KBD_run()
@@ -126,10 +155,12 @@ void KBD_run()
 
     while(1)
     {
-        // Released?
-        if ((s = recv_kbd_byte()) == RELEASED_SCODE)
+        s = recv_kbd_byte();
+        if (s == RELEASED_SCODE)
         {
-            if ((s = recv_kbd_byte()) == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+            printk("Release\n");
+            s = recv_kbd_byte();
+            if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
             {
                 shift_pressed = false;
             }
@@ -158,6 +189,14 @@ void disable_p1()
 void disable_p2()
 {
     write_command_byte(DISABLE_P2_CMD);
+}
+
+void flush_buff()
+{
+    while (read_status_byte() & 0x1)
+    {
+        inb(IO_P_1);
+    }
 }
 
 void enable_p1()
@@ -198,7 +237,7 @@ u8 read_data_byte()
     return inb(IO_P_1);
 }
 
-static void write_data_byte(u8 data_byte)
+void write_data_byte(u8 data_byte)
 {
     wait_write_data();
     outb(IO_P_1, data_byte);
@@ -244,7 +283,7 @@ void write_good_config_byte()
     write_config_byte(get_good_config_byte(read_config_byte()));
 }
 
-/*
+
 void run_controller_self_test()
 {
     u8 self_test_resp;
@@ -256,7 +295,6 @@ void run_controller_self_test()
     assert(self_test_resp != CNTRLR_SELF_TEST_FAIL);
     assert(self_test_resp == CNTRLR_SELF_TEST_PASS);
 }
-*/
 
 void send_kbd_byte(u8 kbd_byte)
 {
@@ -286,6 +324,14 @@ u8 recv_kbd_byte()
     return read_data_byte();
 }
 
+u8 __attribute__((unused)) isr_recv_kbd_byte()
+{
+    while(!info.irq_flag);
+    info.irq_flag = false;
+
+    return info.recv_byte;
+}
+
 void reset_kbd()
 {
     send_kbd_byte(KBD_RST_CMD);
@@ -306,4 +352,31 @@ void enable_scanning()
 }
 */
 
+void register_kbd_isr()
+{
+    IRQ_set_handler(0x21, kbd_isr_handler, NULL);
+}
 
+void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
+{
+    CLI;
+
+    assert(irq_num == KBD_INT_NUM);
+    (void)error;
+    (void)arg;
+
+    const u8 r_byte = inb(IO_P_1);
+    if(r_byte != KBD_ACK_RSP)
+    {
+        info.irq_flag = true;
+        info.recv_byte = r_byte;
+
+        printk("Interrupt occured. Byte: %x, Char: %c\n", info.recv_byte, char_from_scode(info.recv_byte, false));
+    }
+    else
+    {
+        printk("WHAT\n");
+    }
+
+    IRQ_end_of_interrupt(KBD_INT_NUM);
+}

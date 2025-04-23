@@ -55,6 +55,8 @@ void VGA_clear()
 
 void VGA_display_char(char c)
 {
+    NESTED_SAFE_CLI;
+
     assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CELL_COUNT);
 
     if(c == '\n')
@@ -89,6 +91,8 @@ void VGA_display_char(char c)
     set_cursor();
 
     assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CELL_COUNT);
+
+    NESTED_SAFE_STI;
 }
 
 void VGA_display_str(const char *s)

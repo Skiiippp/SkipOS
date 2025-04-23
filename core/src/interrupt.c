@@ -15,6 +15,13 @@
 #define ISR_CNT IDT_ENTRY_CNT
 #define IRQ_CNT ISR_CNT
 
+#define EXTERNAL_INT_BASE 0x20
+#define EXTERNAL_INT_CNT 16 // Includes the line on first PIC used for cascading
+#define EXTERNAL_INT_MAX (EXTERNAL_INT_BASE + EXTERNAL_INT_CNT - 1)
+
+// rflags 
+#define RFLAGS_INTR_ENABLED_MSK (1 << 9)
+
 // Offset into GDT for selctor - this is 8, see boot.asm file
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
@@ -57,29 +64,87 @@ static void irqh_populate_table();
 
 static void def_irq_handler(u8 isq_index, u32 error, void *arg);
 
+static u64 get_rflags();
+
 /**
  * END PRIVATE
  */
 
 void IRQ_init()
 {
-    CLI;
-
     idt_populate();
 
     idt_load_idtr();
 
     irqh_populate_table();
 
-    disable_pic();
+    PIC_remap(EXTERNAL_INT_BASE);
 
+    PIC_disable_all_pic_irqs();
+}
+
+void IRQ_start()
+{
     STI;
+}
+
+bool IRQ_are_interrupts_enabled()
+{
+    return (get_rflags() & RFLAGS_INTR_ENABLED_MSK);
 }
 
 void IRQ_set_handler(u8 irq_num, irq_handler_t handler, void *arg)
 {
     irq_table[irq_num].handler = handler;
     irq_table[irq_num].arg = arg;
+}
+
+void IRQ_enable_index(u8 irq_index)
+{
+    assert(irq_index >= EXTERNAL_INT_BASE && irq_index <= EXTERNAL_INT_MAX);    // Ensure valid index
+
+    u8 curr_mask, new_irq_mask;
+    u8 pic_line_index;
+    u8 (* fp_PIC_get_mask)();
+    void (* fp_PIC_set_mask)(u8);
+    
+    if (irq_index - EXTERNAL_INT_BASE < LINES_PER_PIC)
+    {
+        fp_PIC_get_mask = PIC_get_pic1_mask;
+        fp_PIC_set_mask = PIC_set_pic1_mask;
+        pic_line_index = irq_index - EXTERNAL_INT_BASE;
+        assert(pic_line_index != 2);   // Ensure not trying to mess with cascade
+    }
+    else
+    {
+        fp_PIC_get_mask = PIC_get_pic2_mask;
+        fp_PIC_set_mask = PIC_set_pic2_mask;
+        pic_line_index = irq_index - EXTERNAL_INT_BASE - LINES_PER_PIC;
+    }
+
+    curr_mask = fp_PIC_get_mask();
+    new_irq_mask = ~(1 << pic_line_index);
+    if (curr_mask & ~new_irq_mask)  // Low means enabled!
+    {
+        curr_mask &= new_irq_mask;
+        fp_PIC_set_mask(curr_mask);
+    }
+}
+
+void IRQ_end_of_interrupt(u8 irq_index)
+{
+    // Check if a PIC based interrupt
+    if(irq_index < EXTERNAL_INT_BASE || irq_index > EXTERNAL_INT_MAX)
+    {
+        return;
+    }
+
+    if (irq_index >= LINES_PER_PIC)
+    {
+        PIC_send_pic2_eoi();
+    }
+
+    PIC_send_pic1_eoi();
 }
 
 void idt_set_descriptor(u8 idt_index, void *isr, u8 attributes)
@@ -119,12 +184,25 @@ void irqh_populate_table()
     }
 }
 
-static void def_irq_handler(u8 irq_num, u32 error, void *arg)
+void def_irq_handler(u8 irq_num, u32 error, void *arg)
 {
     (void)error;
     (void)arg;
 
-    printk("Warning: Unknown IRQ %u triggered.\n", irq_num);
+    printk("Warning: Unknown IRQ 0x%x triggered.\n", irq_num);
+
+    CLI;
+    asm volatile ("hlt");
+}
+
+u64 get_rflags()
+{
+    u64 rflags;
+
+    asm volatile ("pushfq" ::: "memory");
+    asm volatile ("pop %0" : "=r"(rflags) :: "memory");
+
+    return rflags;
 }
 
 // Called in isr_common.asm

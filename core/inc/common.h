@@ -1,13 +1,10 @@
 #pragma once
 
 #include <stdint-gcc.h>
+#include <stdbool.h>
 
 typedef unsigned long size_t;
 typedef unsigned long uintptr_t;
-
-typedef char bool;
-#define true 1
-#define false 0
 
 typedef int8_t s8;
 typedef uint8_t u8;

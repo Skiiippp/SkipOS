@@ -37,13 +37,13 @@ int kernel_main()
     while(!j);
 #endif
 
+    IRQ_init();
+
     VGA_clear();
 
     KBD_init();
 
-    IRQ_init();
-
-    asm volatile ("int 42");
+    IRQ_start();
 
     KBD_run();
 
