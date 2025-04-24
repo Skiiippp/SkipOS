@@ -60,11 +60,22 @@
 
 #define KBD_INT_NUM 0x21
 
+#define PROC_BUFF_SIZE 3
+
 typedef struct
 {
-    u8 recv_byte;
-    bool irq_flag;
-} irq_info;
+    u8 buff[PROC_BUFF_SIZE];
+    u8 *consumer, *producer;
+} proc_state;
+
+static proc_state ps;
+
+static void init_state(proc_state *ps_ptr);
+
+// Return true if next_ptr valid (not empty)
+static bool consumer_next(proc_state *ps_ptr, u8 *next_ptr);
+
+static void producer_add_byte(proc_state *ps_ptr, u8 new_byte);
 
 static void disable_p1();
 
@@ -118,8 +129,6 @@ static void kbd_isr_handler(u8 irq_num, u32 error, void *arg);
 
 //static void enable_scanning();
 
-static irq_info info = {.irq_flag = false};
-
 /**
  * END PRIVATE
  */
@@ -142,6 +151,8 @@ void KBD_init()
 
     set_kbd_scan_code_2();
 
+    init_state(&ps);
+
     register_kbd_isr();
 
     IRQ_enable_index(KBD_INT_NUM);
@@ -155,11 +166,10 @@ void KBD_run()
 
     while(1)
     {
-        s = recv_kbd_byte();
+        s = isr_recv_kbd_byte();
         if (s == RELEASED_SCODE)
         {
-            printk("Release\n");
-            s = recv_kbd_byte();
+            s = isr_recv_kbd_byte();
             if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
             {
                 shift_pressed = false;
@@ -179,6 +189,60 @@ void KBD_run()
             VGA_display_char(c);
         }
     }
+}
+
+void init_state(proc_state *ps_ptr)
+{
+    ps_ptr->consumer = &ps_ptr->buff[0];
+    ps_ptr->producer = &ps_ptr->buff[0];
+}
+
+bool consumer_next(proc_state *ps_ptr, u8 *next_ptr)
+{
+    CLI;
+
+    assert(next_ptr);
+
+    if (ps_ptr->consumer == ps_ptr->producer)
+    {
+        // Empty
+        STI;
+        return false;
+    }
+
+    *next_ptr = *ps_ptr->consumer;
+    ps_ptr->consumer++;
+    if (ps_ptr->consumer >= &ps_ptr->buff[PROC_BUFF_SIZE])
+    {
+        ps_ptr->consumer = &ps_ptr->buff[0];
+    }
+
+    STI;
+    return true;
+}
+
+void producer_add_byte(proc_state *ps_ptr, u8 new_byte)
+{
+
+    //CLI;
+    // Called from within ISR so no need to disable
+
+    assert(ps_ptr);
+
+    if (ps_ptr->producer == ps_ptr->consumer - 1 || (ps_ptr->consumer == &ps_ptr->buff[0] && ps_ptr->producer == &ps_ptr->buff[PROC_BUFF_SIZE-1]))
+    {
+        STI;
+        return;
+    }
+
+    *ps_ptr->producer = new_byte;
+    ps_ptr->producer++;
+    if (ps_ptr->producer == &ps_ptr->buff[PROC_BUFF_SIZE])
+    {
+        ps_ptr->producer = &ps_ptr->buff[0];
+    }
+
+    //STI;
 }
 
 void disable_p1()
@@ -324,12 +388,13 @@ u8 recv_kbd_byte()
     return read_data_byte();
 }
 
-u8 __attribute__((unused)) isr_recv_kbd_byte()
+u8 isr_recv_kbd_byte()
 {
-    while(!info.irq_flag);
-    info.irq_flag = false;
+    u8 out;
 
-    return info.recv_byte;
+    while(!consumer_next(&ps, &out));
+
+    return out;
 }
 
 void reset_kbd()
@@ -359,23 +424,16 @@ void register_kbd_isr()
 
 void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
 {
-    CLI;
-
-    assert(irq_num == KBD_INT_NUM);
     (void)error;
     (void)arg;
 
-    const u8 r_byte = inb(IO_P_1);
-    if(r_byte != KBD_ACK_RSP)
-    {
-        info.irq_flag = true;
-        info.recv_byte = r_byte;
+    assert(irq_num == KBD_INT_NUM);
 
-        printk("Interrupt occured. Byte: %x, Char: %c\n", info.recv_byte, char_from_scode(info.recv_byte, false));
-    }
-    else
+    const u8 new_byte = inb(IO_P_1);
+    if (new_byte != KBD_ACK_RSP)
     {
-        printk("WHAT\n");
+        // Just produce!
+        producer_add_byte(&ps, new_byte);
     }
 
     IRQ_end_of_interrupt(KBD_INT_NUM);
