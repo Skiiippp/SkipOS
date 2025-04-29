@@ -41,8 +41,8 @@ extern void IRQ_init(); // Run before anything else that registers IRQs
 extern void IRQ_start();    // Run after anything else that registers IRQs
 extern bool IRQ_are_interrupts_enabled();
 extern void IRQ_enable_index(u8 irq_index);
-//extern void IRQ_disable_index(u8 irq_index);
-//extern int IRQ_get_mask(int IRQline);
+extern void IRQ_disable_index(u8 irq_index);
+extern bool IRQ_is_enabled(u8 irq_index);
 extern void IRQ_end_of_interrupt(u8 irq_index);
 
 typedef void (*irq_handler_t)(u8, u32, void *);

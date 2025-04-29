@@ -54,6 +54,12 @@ extern void *isr_table[];
 
 static irq_info_t irq_table[IRQ_CNT];
 
+static u8 get_irq_mask(u8 irq_index);
+
+static u8 get_pic_line_index(u8 irq_index);
+
+static void set_irq_line_state(u8 irq_index, bool enabled);
+
 static void idt_set_descriptor(u8 idt_index, void *isr, u8 attributes);
  
 static void idt_populate();
@@ -101,34 +107,20 @@ void IRQ_set_handler(u8 irq_num, irq_handler_t handler, void *arg)
 
 void IRQ_enable_index(u8 irq_index)
 {
-    assert(irq_index >= EXTERNAL_INT_BASE && irq_index <= EXTERNAL_INT_MAX);    // Ensure valid index
+    set_irq_line_state(irq_index, true);
+}
 
-    u8 curr_mask, new_irq_mask;
-    u8 pic_line_index;
-    u8 (* fp_PIC_get_mask)();
-    void (* fp_PIC_set_mask)(u8);
-    
-    if (irq_index - EXTERNAL_INT_BASE < LINES_PER_PIC)
-    {
-        fp_PIC_get_mask = PIC_get_pic1_mask;
-        fp_PIC_set_mask = PIC_set_pic1_mask;
-        pic_line_index = irq_index - EXTERNAL_INT_BASE;
-        assert(pic_line_index != 2);   // Ensure not trying to mess with cascade
-    }
-    else
-    {
-        fp_PIC_get_mask = PIC_get_pic2_mask;
-        fp_PIC_set_mask = PIC_set_pic2_mask;
-        pic_line_index = irq_index - EXTERNAL_INT_BASE - LINES_PER_PIC;
-    }
+void IRQ_disable_index(u8 irq_index)
+{
+    set_irq_line_state(irq_index, false);
+}
 
-    curr_mask = fp_PIC_get_mask();
-    new_irq_mask = ~(1 << pic_line_index);
-    if (curr_mask & ~new_irq_mask)  // Low means enabled!
-    {
-        curr_mask &= new_irq_mask;
-        fp_PIC_set_mask(curr_mask);
-    }
+bool IRQ_is_enabled(u8 irq_index)
+{
+    u8 curr_mask = get_irq_mask(irq_index);
+    u8 pic_line_index = get_pic_line_index(irq_index);
+
+    return !(curr_mask & (1 << pic_line_index));    // Low is enabled
 }
 
 void IRQ_end_of_interrupt(u8 irq_index)
@@ -145,6 +137,72 @@ void IRQ_end_of_interrupt(u8 irq_index)
     }
 
     PIC_send_pic1_eoi();
+}
+
+u8 get_irq_mask(u8 irq_index)
+{
+    assert(irq_index >= EXTERNAL_INT_BASE && irq_index <= EXTERNAL_INT_MAX);
+
+    u8 (* fp_PIC_get_mask)();
+    
+    if (irq_index - EXTERNAL_INT_BASE < LINES_PER_PIC)
+    {
+        fp_PIC_get_mask = PIC_get_pic1_mask;
+    }
+    else
+    {
+        fp_PIC_get_mask = PIC_get_pic2_mask;
+    }
+
+    return fp_PIC_get_mask();
+}
+
+u8 get_pic_line_index(u8 irq_index)
+{
+    assert(irq_index >= EXTERNAL_INT_BASE && irq_index <= EXTERNAL_INT_MAX);
+
+    u8 pic_line_index;
+
+    if (irq_index - EXTERNAL_INT_BASE < LINES_PER_PIC)
+    {
+        pic_line_index = irq_index - EXTERNAL_INT_BASE;
+        assert(pic_line_index != 2);   // Ensure not trying to mess with cascade
+    }
+    else
+    {
+        pic_line_index = irq_index - EXTERNAL_INT_BASE - LINES_PER_PIC;
+    }
+
+    return pic_line_index;
+}
+
+void set_irq_line_state(u8 irq_index, bool enable)
+{
+    u8 curr_mask = 0;
+    u8 pic_line_index = 0;
+    void (* fp_PIC_set_mask)(u8);
+    
+    assert(irq_index >= EXTERNAL_INT_BASE && irq_index <= EXTERNAL_INT_MAX);    // Ensure valid index
+
+    if (irq_index - EXTERNAL_INT_BASE < LINES_PER_PIC)
+    {
+        fp_PIC_set_mask = PIC_set_pic1_mask;
+        assert(pic_line_index != 2);   // Ensure not trying to mess with cascade
+    }
+    else
+    {
+        fp_PIC_set_mask = PIC_set_pic2_mask;
+    }
+
+    curr_mask = get_irq_mask(irq_index);
+    pic_line_index = get_pic_line_index(irq_index);
+    curr_mask &= ~(1 << pic_line_index);    // Clear necesarry bit
+    if (!enable)   // If disable, set bit (high = disabled). Otherwise no need
+    {
+        curr_mask |= (1 << pic_line_index);
+    }
+
+    fp_PIC_set_mask(curr_mask);
 }
 
 // From OSDev Wiki
