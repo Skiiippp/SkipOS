@@ -25,7 +25,7 @@
 // Offset into GDT for selctor - this is 8, see boot.asm file
 #define GDT_OFFSET_KERNEL_CODE 0x08
 
-// Thanks, OSDevWiki!
+// From OSDev Wiki
 typedef struct {
 	u16 isr_low;
 	u16 kernel_cs;
@@ -147,6 +147,7 @@ void IRQ_end_of_interrupt(u8 irq_index)
     PIC_send_pic1_eoi();
 }
 
+// From OSDev Wiki
 void idt_set_descriptor(u8 idt_index, void *isr, u8 attributes)
 {
     idt_entry_t *entry_ptr;

@@ -12,6 +12,7 @@
 #define PIC2_CMD_PORT 0xA0
 #define PIC2_DATA_PORT 0xA1
 
+// From OSDev Wiki (Next 10)
 #define ICW1_ICW4	0x01		/* Indicates that ICW4 will be present */
 #define ICW1_SINGLE	0x02		/* Single (cascade) mode */
 #define ICW1_INTERVAL4	0x04		/* Call address interval 4 (8) */
@@ -36,7 +37,7 @@ void PIC_disable_all_pic_irqs()
     PIC_set_pic2_mask(0xFF);
 }
 
-// Thanks, OSDev Wiki!
+// From OSDev Wiki
 void PIC_remap(u8 base)
 {
     const u8 pic1_offset = base;
