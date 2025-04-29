@@ -52,7 +52,7 @@ int printk(const char *fmt, ...)
     va_list args;
     int ret = 0;
 
-    assert(fmt);
+    assert_noprint(fmt);
 
     va_start(args, fmt);
 
@@ -67,7 +67,7 @@ int printk(const char *fmt, ...)
         {
             fmt++;
 
-            assert(*fmt != '\0');
+            assert_noprint(*fmt != '\0');
 
             switch (*fmt)
             {
@@ -94,7 +94,7 @@ int printk(const char *fmt, ...)
                     break;
                 case 'h':
                     fmt++;
-                    assert(*fmt != '\0');
+                    assert_noprint(*fmt != '\0');
                     switch(*fmt)
                     {
                         case 'd':
@@ -106,12 +106,12 @@ int printk(const char *fmt, ...)
                         case 'x':
                             print_hex_short((unsigned short)va_arg(args, unsigned int));
                             break;
-                        default: assert(0);
+                        default: assert_noprint(0);
                     }
                     break;
                 case 'l':
                     fmt++;
-                    assert(*fmt != '\0');
+                    assert_noprint(*fmt != '\0');
                     switch(*fmt)
                     {
                         case 'd':
@@ -123,12 +123,12 @@ int printk(const char *fmt, ...)
                         case 'x':
                             print_hex_long(va_arg(args, unsigned long));
                             break;
-                        default: assert(0);
+                        default: assert_noprint(0);
                     }
                     break;
                 case 'q':
                     fmt++;
-                    assert(*fmt != '\0');
+                    assert_noprint(*fmt != '\0');
                     switch(*fmt)
                     {
                         case 'd':
@@ -140,10 +140,10 @@ int printk(const char *fmt, ...)
                         case 'x':
                             print_hex_long_long(va_arg(args, unsigned long long), LOWERCASE);
                             break;
-                        default: assert(0);
+                        default: assert_noprint(0);
                     }
                     break;
-                default: assert(0);
+                default: assert_noprint(0);
             }
 
             fmt++;
