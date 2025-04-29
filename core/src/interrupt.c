@@ -19,6 +19,8 @@
 #define EXTERNAL_INT_CNT 16 // Includes the line on first PIC used for cascading
 #define EXTERNAL_INT_MAX (EXTERNAL_INT_BASE + EXTERNAL_INT_CNT - 1)
 
+#define PIC1_CASCADE_LINE 2
+
 // rflags 
 #define RFLAGS_INTR_ENABLED_MSK (1 << 9)
 
@@ -60,6 +62,8 @@ static u8 get_pic_line_index(u8 irq_index);
 
 static void set_irq_line_state(u8 irq_index, bool enabled);
 
+static void enable_cascade();
+
 static void idt_set_descriptor(u8 idt_index, void *isr, u8 attributes);
  
 static void idt_populate();
@@ -87,6 +91,9 @@ void IRQ_init()
     PIC_remap(EXTERNAL_INT_BASE);
 
     PIC_disable_all_pic_irqs();
+
+    // Maybe??
+    enable_cascade();
 }
 
 void IRQ_start()
@@ -203,6 +210,13 @@ void set_irq_line_state(u8 irq_index, bool enable)
     }
 
     fp_PIC_set_mask(curr_mask);
+}
+
+void enable_cascade()
+{
+    u8 curr_mask = PIC_get_pic1_mask();
+    curr_mask &= ~(1 << PIC1_CASCADE_LINE);
+    PIC_set_pic1_mask(curr_mask);
 }
 
 // From OSDev Wiki
