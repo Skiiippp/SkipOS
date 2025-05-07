@@ -70,12 +70,13 @@ typedef struct
 
 static proc_state ps;
 
+
 static void init_state(proc_state *ps_ptr);
 
 // Return true if next_ptr valid (not empty)
 static bool consumer_next(proc_state *ps_ptr, u8 *next_ptr);
 
-static void producer_add_byte(proc_state *ps_ptr, u8 new_byte);
+//static void producer_add_byte(proc_state *ps_ptr, u8 new_byte);
 
 static void disable_p1();
 
@@ -191,6 +192,57 @@ void KBD_run()
     }
 }
 
+void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
+{
+    u8 s;
+    static bool shift_pressed = false;
+
+    (void)irq_num;
+    (void)error;
+    (void)arg;
+
+    s = recv_kbd_byte();
+    if (s == RELEASED_SCODE)
+    {
+        s = recv_kbd_byte();
+        if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+        {
+            shift_pressed = false;
+        }
+    }
+    else if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+    {
+        shift_pressed = true;
+    }
+    else if (s == BACKSPACE_SCODE)
+    {
+        VGA_backspace_char();
+    }
+    else
+    {
+        VGA_display_char(char_from_scode(s, shift_pressed));
+    }
+
+    IRQ_end_of_interrupt(KBD_INT_NUM);
+}
+
+// void OLD_kbd_isr_handler(u8 irq_num, u32 error, void *arg)
+// {
+//     (void)error;
+//     (void)arg;
+
+//     assert(irq_num == KBD_INT_NUM);
+
+//     const u8 new_byte = inb(IO_P_1);
+//     if (new_byte != KBD_ACK_RSP)
+//     {
+//         // Just produce!
+//         producer_add_byte(&ps, new_byte);
+//     }
+
+//     IRQ_end_of_interrupt(KBD_INT_NUM);
+// }
+
 void init_state(proc_state *ps_ptr)
 {
     ps_ptr->consumer = &ps_ptr->buff[0];
@@ -221,29 +273,29 @@ bool consumer_next(proc_state *ps_ptr, u8 *next_ptr)
     return true;
 }
 
-void producer_add_byte(proc_state *ps_ptr, u8 new_byte)
-{
+// void producer_add_byte(proc_state *ps_ptr, u8 new_byte)
+// {
 
-    //CLI;
-    // Called from within ISR so no need to disable
+//     //CLI;
+//     // Called from within ISR so no need to disable
 
-    assert(ps_ptr);
+//     assert(ps_ptr);
 
-    if (ps_ptr->producer == ps_ptr->consumer - 1 || (ps_ptr->consumer == &ps_ptr->buff[0] && ps_ptr->producer == &ps_ptr->buff[PROC_BUFF_SIZE-1]))
-    {
-        STI;
-        return;
-    }
+//     if (ps_ptr->producer == ps_ptr->consumer - 1 || (ps_ptr->consumer == &ps_ptr->buff[0] && ps_ptr->producer == &ps_ptr->buff[PROC_BUFF_SIZE-1]))
+//     {
+//         STI;
+//         return;
+//     }
 
-    *ps_ptr->producer = new_byte;
-    ps_ptr->producer++;
-    if (ps_ptr->producer == &ps_ptr->buff[PROC_BUFF_SIZE])
-    {
-        ps_ptr->producer = &ps_ptr->buff[0];
-    }
+//     *ps_ptr->producer = new_byte;
+//     ps_ptr->producer++;
+//     if (ps_ptr->producer == &ps_ptr->buff[PROC_BUFF_SIZE])
+//     {
+//         ps_ptr->producer = &ps_ptr->buff[0];
+//     }
 
-    //STI;
-}
+//     //STI;
+// }
 
 void disable_p1()
 {
@@ -390,6 +442,9 @@ u8 recv_kbd_byte()
 
 u8 isr_recv_kbd_byte()
 {
+    // Dont use!
+    assert(false);
+
     u8 out;
 
     while(!consumer_next(&ps, &out));
@@ -420,21 +475,4 @@ void enable_scanning()
 void register_kbd_isr()
 {
     IRQ_set_handler(0x21, kbd_isr_handler, NULL);
-}
-
-void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
-{
-    (void)error;
-    (void)arg;
-
-    assert(irq_num == KBD_INT_NUM);
-
-    const u8 new_byte = inb(IO_P_1);
-    if (new_byte != KBD_ACK_RSP)
-    {
-        // Just produce!
-        producer_add_byte(&ps, new_byte);
-    }
-
-    IRQ_end_of_interrupt(KBD_INT_NUM);
 }

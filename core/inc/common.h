@@ -20,3 +20,5 @@ typedef uint64_t u64;
 
 typedef __int128_t s128;
 typedef __uint128_t u128;
+
+#define HLT asm volatile ("hlt")
