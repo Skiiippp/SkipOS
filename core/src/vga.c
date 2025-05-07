@@ -55,7 +55,12 @@ void VGA_clear()
 
 void VGA_display_char(char c)
 {
-    NESTED_SAFE_CLI;
+    //NESTED_SAFE_CLI;
+    bool enable_ints = false;
+    if (IRQ_are_interrupts_enabled()){
+        enable_ints = true;
+        CLI;
+    }
 
     assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CELL_COUNT);
 
@@ -92,7 +97,13 @@ void VGA_display_char(char c)
 
     assert(x_pos < VGA_WIDTH && y_pos < VGA_HEIGHT && cursor < VGA_CELL_COUNT);
 
-    NESTED_SAFE_STI;
+    //NESTED_SAFE_STI;
+    if (enable_ints)
+    {
+        STI;
+    }
+
+    //assert(!IRQ_are_interrupts_enabled());
 }
 
 void VGA_display_str(const char *s)

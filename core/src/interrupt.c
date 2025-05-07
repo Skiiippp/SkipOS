@@ -103,7 +103,8 @@ void IRQ_start()
 
 bool IRQ_are_interrupts_enabled()
 {
-    return (get_rflags() & RFLAGS_INTR_ENABLED_MSK);
+    u8 rflags = get_rflags();
+    return (rflags & RFLAGS_INTR_ENABLED_MSK);
 }
 
 void IRQ_set_handler(u8 irq_num, irq_handler_t handler, void *arg)
@@ -272,8 +273,11 @@ u64 get_rflags()
 {
     u64 rflags;
 
-    asm volatile ("pushfq" ::: "memory");
-    asm volatile ("pop %0" : "=r"(rflags) :: "memory");
+    asm volatile (
+        "pushfq\n\t"
+        "popq %0"
+        : "=r"(rflags)
+    );
 
     return rflags;
 }

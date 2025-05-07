@@ -156,7 +156,7 @@ void KBD_init()
 
     register_kbd_isr();
 
-    IRQ_enable_index(KBD_INT_NUM);
+    IRQ_enable_index(KBD_INT_NUM);    
 }
 
 // void KBD_run()
@@ -200,6 +200,13 @@ void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
     (void)irq_num;
     (void)error;
     (void)arg;
+
+
+    if (!(read_status_byte() & OUTPUT_BUFF_STATUS_MSK))
+    {
+        IRQ_end_of_interrupt(KBD_INT_NUM);
+        return;
+    }
 
     s = recv_kbd_byte();
     if (s == RELEASED_SCODE)
@@ -420,7 +427,8 @@ static void verify_kbd_ack(u8 kbd_sent_byte)
 
 u8 recv_kbd_byte()
 {
-    return read_data_byte();
+    return inb(IO_P_1);
+    //return read_data_byte();
 }
 
 void reset_kbd()
