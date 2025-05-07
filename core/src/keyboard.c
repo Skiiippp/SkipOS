@@ -74,7 +74,7 @@ static proc_state ps;
 static void init_state(proc_state *ps_ptr);
 
 // Return true if next_ptr valid (not empty)
-static bool consumer_next(proc_state *ps_ptr, u8 *next_ptr);
+//static bool consumer_next(proc_state *ps_ptr, u8 *next_ptr);
 
 //static void producer_add_byte(proc_state *ps_ptr, u8 new_byte);
 
@@ -118,7 +118,7 @@ static void verify_kbd_ack(u8 kbd_sent_byte);
 static u8 recv_kbd_byte();
 
 // Version of recv_kbd_byte() that uses isrs.
-static u8 isr_recv_kbd_byte();
+//static u8 isr_recv_kbd_byte();
 
 static void reset_kbd();
 
@@ -159,38 +159,38 @@ void KBD_init()
     IRQ_enable_index(KBD_INT_NUM);
 }
 
-void KBD_run()
-{
-    u8 s;
-    char c;
-    bool shift_pressed = false;
+// void KBD_run()
+// {
+//     u8 s;
+//     char c;
+//     bool shift_pressed = false;
 
-    while(1)
-    {
-        s = isr_recv_kbd_byte();
-        if (s == RELEASED_SCODE)
-        {
-            s = isr_recv_kbd_byte();
-            if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
-            {
-                shift_pressed = false;
-            }
-        }
-        else if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
-        {
-            shift_pressed = true;
-        }
-        else if(s == BACKSPACE_SCODE)
-        {
-            VGA_backspace_char();
-        }
-        else
-        {
-            c = char_from_scode(s, shift_pressed);
-            VGA_display_char(c);
-        }
-    }
-}
+//     while(1)
+//     {
+//         s = isr_recv_kbd_byte();
+//         if (s == RELEASED_SCODE)
+//         {
+//             s = isr_recv_kbd_byte();
+//             if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+//             {
+//                 shift_pressed = false;
+//             }
+//         }
+//         else if (s == L_SHIFT_SCODE || s == R_SHIFT_SCODE)
+//         {
+//             shift_pressed = true;
+//         }
+//         else if(s == BACKSPACE_SCODE)
+//         {
+//             VGA_backspace_char();
+//         }
+//         else
+//         {
+//             c = char_from_scode(s, shift_pressed);
+//             VGA_display_char(c);
+//         }
+//     }
+// }
 
 void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
 {
@@ -226,52 +226,35 @@ void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
     IRQ_end_of_interrupt(KBD_INT_NUM);
 }
 
-// void OLD_kbd_isr_handler(u8 irq_num, u32 error, void *arg)
-// {
-//     (void)error;
-//     (void)arg;
-
-//     assert(irq_num == KBD_INT_NUM);
-
-//     const u8 new_byte = inb(IO_P_1);
-//     if (new_byte != KBD_ACK_RSP)
-//     {
-//         // Just produce!
-//         producer_add_byte(&ps, new_byte);
-//     }
-
-//     IRQ_end_of_interrupt(KBD_INT_NUM);
-// }
-
 void init_state(proc_state *ps_ptr)
 {
     ps_ptr->consumer = &ps_ptr->buff[0];
     ps_ptr->producer = &ps_ptr->buff[0];
 }
 
-bool consumer_next(proc_state *ps_ptr, u8 *next_ptr)
-{
-    CLI;
+// bool consumer_next(proc_state *ps_ptr, u8 *next_ptr)
+// {
+//     CLI;
 
-    assert(next_ptr);
+//     assert(next_ptr);
 
-    if (ps_ptr->consumer == ps_ptr->producer)
-    {
-        // Empty
-        STI;
-        return false;
-    }
+//     if (ps_ptr->consumer == ps_ptr->producer)
+//     {
+//         // Empty
+//         STI;
+//         return false;
+//     }
 
-    *next_ptr = *ps_ptr->consumer;
-    ps_ptr->consumer++;
-    if (ps_ptr->consumer >= &ps_ptr->buff[PROC_BUFF_SIZE])
-    {
-        ps_ptr->consumer = &ps_ptr->buff[0];
-    }
+//     *next_ptr = *ps_ptr->consumer;
+//     ps_ptr->consumer++;
+//     if (ps_ptr->consumer >= &ps_ptr->buff[PROC_BUFF_SIZE])
+//     {
+//         ps_ptr->consumer = &ps_ptr->buff[0];
+//     }
 
-    STI;
-    return true;
-}
+//     STI;
+//     return true;
+// }
 
 // void producer_add_byte(proc_state *ps_ptr, u8 new_byte)
 // {
@@ -438,18 +421,6 @@ static void verify_kbd_ack(u8 kbd_sent_byte)
 u8 recv_kbd_byte()
 {
     return read_data_byte();
-}
-
-u8 isr_recv_kbd_byte()
-{
-    // Dont use!
-    assert(false);
-
-    u8 out;
-
-    while(!consumer_next(&ps, &out));
-
-    return out;
 }
 
 void reset_kbd()

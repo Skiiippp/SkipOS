@@ -47,12 +47,7 @@ int kernel_main()
 
     IRQ_start();
 
-    //KBD_run();
-
-    while(1)
-    {
-        HLT;
-    }
+    HLT;
 
     return -1;
 }
