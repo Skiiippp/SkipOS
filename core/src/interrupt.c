@@ -11,13 +11,16 @@
  * BEGIN PRIVATE
  */
 
-#define IDT_ENTRY_CNT 256
-#define ISR_CNT IDT_ENTRY_CNT
-#define IRQ_CNT ISR_CNT
+#define IRQ_CNT 256
+#define IDT_ENTRY_CNT IRQ_CNT
+#define ISR_CNT IRQ_CNT
 
 #define EXTERNAL_INT_BASE 0x20
 #define EXTERNAL_INT_CNT 16 // Includes the line on first PIC used for cascading
 #define EXTERNAL_INT_MAX (EXTERNAL_INT_BASE + EXTERNAL_INT_CNT - 1)
+
+#define DE_INT_NUM 0x0
+#define DF_INT_NUM 0x8
 
 #define PIC1_CASCADE_LINE 2
 
@@ -72,9 +75,17 @@ static void idt_load_idtr();
 
 static void irqh_populate_table();
 
-static void def_irq_handler(u8 isq_index, u32 error, void *arg);
-
 static u64 get_rflags();
+
+static void def_irq_handler(u8 irq_index, u32 error, void *arg);
+
+static void double_fault_handler(u8 irq_index, u32 error, void *arg);
+
+static void div_zero_handler(u8 irq_index, u32 error, void *arg);
+
+static void page_fault_handler(u8 irq_index, u32 error, void *arg);
+
+static void gen_proc_handler(u8 irq_index, u32 error, void *arg);
 
 /**
  * END PRIVATE
@@ -88,10 +99,14 @@ void IRQ_init()
 
     irqh_populate_table();
 
+    IRQ_set_handler(DF_INT_NUM, double_fault_handler, NULL);
+    IRQ_set_handler(DE_INT_NUM, div_zero_handler, NULL);
+    IRQ_set_handler(0xE, page_fault_handler, NULL);
+    IRQ_set_handler(0xD, gen_proc_handler, NULL);
+
     PIC_remap(EXTERNAL_INT_BASE);
 
     PIC_disable_all_pic_irqs();
-
     // Maybe??
     enable_cascade();
 }
@@ -239,6 +254,11 @@ void idt_populate()
 {
     for(int i = 0; i < IDT_ENTRY_CNT; i++)
     {
+        if (i == 0xE)
+        {
+            return;
+        }
+
         idt_set_descriptor(i, isr_table[i], 0x8E);
     }
 }
@@ -266,7 +286,7 @@ void def_irq_handler(u8 irq_num, u32 error, void *arg)
     printk("Warning: Unknown IRQ 0x%x triggered.\n", irq_num);
 
     CLI;
-    asm volatile ("hlt");
+    HLT;
 }
 
 u64 get_rflags()
@@ -286,4 +306,54 @@ u64 get_rflags()
 void isr_helper(u8 irq_num, u32 error)
 {
     irq_table[irq_num].handler(irq_num, error, irq_table[irq_num].arg);
+}
+
+void double_fault_handler(u8 irq_index, u32 error, void *arg)
+{
+    (void)error;
+    (void)arg;
+
+    assert(irq_index == DF_INT_NUM);
+
+    printk("Double fault occured\n");
+
+    CLI;
+    HLT;
+}
+
+void div_zero_handler(u8 irq_index, u32 error, void *arg)
+{
+    (void)error;
+    (void)arg;
+
+    assert(irq_index == DE_INT_NUM);
+
+    printk("Divide error occured\n");
+
+    asm volatile ("int 13");
+}
+
+void page_fault_handler(u8 irq_index, u32 error, void *arg)
+{
+    (void)irq_index;
+    (void)error;
+    (void)arg;
+
+    assert(irq_index = 0xE);
+
+    char test = *(char *)0xDEADBEEF;
+    (void)test;
+
+    HLT;
+}
+
+void gen_proc_handler(u8 irq_index, u32 error, void *arg)
+{
+    (void)irq_index;
+    (void)error;
+    (void)arg;
+
+    assert(irq_index == 0xD);
+
+    printk("gp fault occured\n");
 }

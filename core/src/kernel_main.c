@@ -47,6 +47,7 @@ int kernel_main()
 
     IRQ_start();
 
+
     while(1)
     {
         HLT;

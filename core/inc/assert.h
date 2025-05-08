@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "printk.h"
+#include "interrupt.h"
 
 #define assert(condition)   \
     do                      \
@@ -10,7 +11,7 @@
         {                   \
             asm volatile ("cli");   \
             printk("Assert failed: %s:%u\n", __FILE__, __LINE__);   \
-            asm volatile ("hlt");   \
+            HLT;   \
         }                   \
     }                       \
     while(0)                \
@@ -21,7 +22,8 @@
     {   \
         if (!(condition))   \
         {   \
-            asm volatile("cli;hlt"); \
+            CLI; \
+            HLT; \
         }   \
     }   \
     while (0)   \
