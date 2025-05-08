@@ -1,3 +1,3 @@
 #pragma once
 
-extern int printk(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+int printk(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));

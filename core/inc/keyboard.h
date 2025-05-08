@@ -1,5 +1,5 @@
 #pragma once
 
-extern void KBD_init();
+void KBD_init();
 
-//extern void KBD_run();
+//oid KBD_run();

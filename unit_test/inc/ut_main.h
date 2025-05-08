@@ -1,3 +1,3 @@
 #pragma once
 
-extern int ut_main();
+int ut_main();
