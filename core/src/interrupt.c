@@ -4,6 +4,7 @@
 #include "../inc/assert.h"
 #include "../inc/pic.h"
 #include "../inc/printk.h"
+#include "../inc/gdt.h"
 
 #include <stddef.h>
 
@@ -21,6 +22,8 @@
 
 #define DE_INT_NUM 0x0
 #define DF_INT_NUM 0x8
+#define GP_INT_NUM 0xD
+#define PF_INT_NUM 0xE
 
 #define PIC1_CASCADE_LINE 2
 
@@ -79,9 +82,9 @@ static u64 get_rflags();
 
 static void def_irq_handler(u8 irq_index, u32 error, void *arg);
 
-static void double_fault_handler(u8 irq_index, u32 error, void *arg);
-
 static void div_zero_handler(u8 irq_index, u32 error, void *arg);
+
+static void double_fault_handler(u8 irq_index, u32 error, void *arg);
 
 static void page_fault_handler(u8 irq_index, u32 error, void *arg);
 
@@ -101,13 +104,13 @@ void IRQ_init()
 
     IRQ_set_handler(DF_INT_NUM, double_fault_handler, NULL);
     IRQ_set_handler(DE_INT_NUM, div_zero_handler, NULL);
-    IRQ_set_handler(0xE, page_fault_handler, NULL);
-    IRQ_set_handler(0xD, gen_proc_handler, NULL);
+    IRQ_set_handler(PF_INT_NUM, page_fault_handler, NULL);
+    IRQ_set_handler(GP_INT_NUM, gen_proc_handler, NULL);
 
     PIC_remap(EXTERNAL_INT_BASE);
 
     PIC_disable_all_pic_irqs();
-    // Maybe??
+
     enable_cascade();
 }
 
@@ -254,13 +257,13 @@ void idt_populate()
 {
     for(int i = 0; i < IDT_ENTRY_CNT; i++)
     {
-        if (i == 0xE)
-        {
-            return;
-        }
-
         idt_set_descriptor(i, isr_table[i], 0x8E);
     }
+
+    idt[GP_INT_NUM].ist = 1;
+    idt[DF_INT_NUM].ist = 2;
+    idt[PF_INT_NUM].ist = 3;
+
 }
 
 void idt_load_idtr()
@@ -285,7 +288,6 @@ void def_irq_handler(u8 irq_num, u32 error, void *arg)
 
     printk("Warning: Unknown IRQ 0x%x triggered.\n", irq_num);
 
-    CLI;
     HLT;
 }
 
@@ -315,9 +317,8 @@ void double_fault_handler(u8 irq_index, u32 error, void *arg)
 
     assert(irq_index == DF_INT_NUM);
 
-    printk("Double fault occured\n");
+    printk("Double fault occured.\n");
 
-    CLI;
     HLT;
 }
 
@@ -328,32 +329,33 @@ void div_zero_handler(u8 irq_index, u32 error, void *arg)
 
     assert(irq_index == DE_INT_NUM);
 
-    printk("Divide error occured\n");
+    printk("Divide error occured.\n");
 
-    asm volatile ("int 13");
+    HLT;
 }
 
 void page_fault_handler(u8 irq_index, u32 error, void *arg)
 {
-    (void)irq_index;
     (void)error;
     (void)arg;
 
-    assert(irq_index = 0xE);
+    assert(irq_index = PF_INT_NUM);
 
-    char test = *(char *)0xDEADBEEF;
-    (void)test;
+    asm volatile ("int 14");
+
+    printk("Page fault occured.\n");
 
     HLT;
 }
 
 void gen_proc_handler(u8 irq_index, u32 error, void *arg)
 {
-    (void)irq_index;
     (void)error;
     (void)arg;
 
-    assert(irq_index == 0xD);
+    assert(irq_index == GP_INT_NUM);
 
-    printk("gp fault occured\n");
+    printk("General protection fault occured.\n");
+
+    HLT;
 }
