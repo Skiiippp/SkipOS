@@ -5,6 +5,7 @@
 #include "../inc/keyboard.h"
 #include "../inc/interrupt.h"
 #include "../inc/gdt.h"
+#include "../inc/serial.h"
 
 #include <limits.h>
 
@@ -46,7 +47,13 @@ int kernel_main()
 
     KBD_init();
 
+    SER_init();
+
     IRQ_start();
+
+    printk("Kernel Initialized.\n");
+    printk("Holy crab.\n");
+    
 
     while(1)
     {

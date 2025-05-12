@@ -3,6 +3,8 @@
 #include "../inc/assert.h"
 #include "../inc/common.h"
 #include "../inc/vga.h"
+#include "../inc/serial.h"
+#include "../inc/string.h"
 
 #include <stdarg.h>
 #include <limits.h>
@@ -43,6 +45,9 @@ static void print_unsigned_long_long_varbase(unsigned long long val, u8 base, Ca
 // Single digit!
 static char int_to_char(u8 val, Case cs);
 
+static void display_char(char c);
+static void display_str(const char *s);
+
 /**
  * END PRIVATE
  */
@@ -60,7 +65,7 @@ int printk(const char *fmt, ...)
     {
         if(*fmt != '%')
         {
-            VGA_display_char(*fmt);
+            display_char(*fmt);
             fmt++;
         }
         else
@@ -72,7 +77,7 @@ int printk(const char *fmt, ...)
             switch (*fmt)
             {
                 case '%':
-                    VGA_display_char('%');
+                    display_char('%');
                     break;
                 case 'c':
                     print_char((char)va_arg(args, int));
@@ -157,18 +162,18 @@ int printk(const char *fmt, ...)
 
 void print_char(char c)
 {
-    VGA_display_char(c);
+    display_char(c);
 }
 
 void print_str(const char *s)
 {
-    VGA_display_str(s);
+    display_str(s);
 }
 
 void print_ptr(const void *p)
 {
     // "Should" be 64 cuz ptr is 64 bits but case issue makes 128 easier
-    VGA_display_str("0x"); 
+    display_str("0x"); 
     print_hex_long_long((unsigned long)p, UPPERCASE);
 }
 
@@ -221,7 +226,7 @@ void print_long_long(long long val)
 {
     if(val < 0)
     {
-        VGA_display_char('-');
+        display_char('-');
         print_unsigned_long_long((unsigned long long)(val * -1));
     }
     else
@@ -247,7 +252,7 @@ static void print_unsigned_long_long_varbase(unsigned long long val, u8 base, Ca
 
     if(val == 0)
     {
-        VGA_display_char('0');
+        display_char('0');
     }
     else
     {
@@ -262,7 +267,7 @@ static void print_unsigned_long_long_varbase(unsigned long long val, u8 base, Ca
 
         while(index >= 0)
         {
-            VGA_display_char(tmp_buff[index]);
+            display_char(tmp_buff[index]);
             index -= 1;
         }
     }
@@ -287,4 +292,18 @@ char int_to_char(u8 val, Case cs)
     }
 
     return (hex_base + (val - 0xA));
+}
+
+void display_char(char c)
+{
+    VGA_display_char(c);
+    SER_write((u8 *)&c, 1);
+}
+
+void display_str(const char *s)
+{
+    assert(s);
+
+    VGA_display_str(s);
+    SER_write((u8 *)s, strlen(s) + 1);  //+1 for null
 }

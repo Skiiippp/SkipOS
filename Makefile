@@ -28,7 +28,7 @@ clean:
 	rm -rf build
 
 run: $(IMG)
-	qemu-system-x86_64 -s -drive format=raw,file=$(IMG) -serial stdio -d int -no-reboot
+	qemu-system-x86_64 -s -drive format=raw,file=$(IMG) -serial stdio
 
 debug: $(IMG)
 	gdb -x helper_scripts/gdb_commands

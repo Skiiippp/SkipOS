@@ -100,7 +100,7 @@ void GDT_init(void)
     assert(sizeof(gdt) == GDT_NUM_ENTIES * sizeof(gdt_usr_desc_t));
     assert(sizeof(tss_t) == 104);
 
-    u16 tss_offset = (uintptr_t)&gdt[2] - (uintptr_t)&gdt[0];
+    const u16 tss_offset = (uintptr_t)&gdt[2] - (uintptr_t)&gdt[0];
 
     gdt_ptr.size = sizeof(gdt) - 1;
     gdt_ptr.offset = (u64)gdt; 
@@ -113,7 +113,7 @@ void GDT_init(void)
     tss.ist2 = (u64)df_stack_base;
     tss.ist3 = (u64)pf_stack_base;
 
-    asm volatile ("lgdt %0" :: "m" (gdt_ptr));
+    asm volatile ("lgdt %0" :: "m"(gdt_ptr));
     asm volatile ("ltr %0" :: "r"(tss_offset));
 }
 
