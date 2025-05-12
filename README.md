@@ -5,6 +5,7 @@
 - M02: printk
 - M03: keyboard
 - M04: interrupts
+- M05: serial
 
 ### Tech Debt
 - Optimize scan code search with a LUT
