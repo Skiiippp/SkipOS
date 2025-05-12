@@ -25,7 +25,7 @@
 #define BASE_BAUD 115200
 #define BAUD_DIVISOR (BASE_BAUD/UART_BAUD) // 115200/9600
 
-#define BUFF_SIZE 64
+#define BUFF_SIZE 128
 
 typedef struct
 {

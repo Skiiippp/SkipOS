@@ -7,6 +7,9 @@ bits 32
 start:
     mov esp, stack_top
 
+    ; save multiboot tags ptr
+    push ebx
+
     call check_multiboot
     call check_cpuid
     call check_long_mode
@@ -17,6 +20,9 @@ start:
     ; load the 64-bit GDT
     lgdt [gdt64.pointer]
     
+    ; pop multiboot tags ptr into arg
+    pop edi
+
     jmp gdt64.code:long_mode_start
 
     hlt

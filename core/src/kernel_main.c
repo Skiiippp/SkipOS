@@ -6,6 +6,7 @@
 #include "../inc/interrupt.h"
 #include "../inc/gdt.h"
 #include "../inc/serial.h"
+#include "../inc/memory.h"
 
 #include <limits.h>
 
@@ -24,15 +25,8 @@
  * END PRIVATE
  */
 
-int kernel_main()
+int kernel_main(u8 *mb_tags_ptr)
 {
-#ifdef RUN_UNIT_TESTS
-    ut_main();
-#endif
-
-#ifdef RUN_SYSTEM_TESTS
-    st_main();
-#endif
 
 #ifdef PAUSE
     int j = 0;
@@ -49,11 +43,17 @@ int kernel_main()
 
     SER_init();
 
+    MMU_init(mb_tags_ptr);
+
     IRQ_start();
 
-    printk("Kernel Initialized.\n");
-    printk("Holy crab.\n");
-    
+#ifdef RUN_UNIT_TESTS
+    ut_main();
+#endif
+
+#ifdef RUN_SYSTEM_TESTS
+    st_main();
+#endif
 
     while(1)
     {
