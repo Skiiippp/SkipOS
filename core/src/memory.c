@@ -79,6 +79,11 @@ typedef struct
     sec_head_ent_t *sec_head_ent_arr;
 } elf_info_t;
 
+typedef struct
+{
+    mem_info_entry_t *lower, *upper;
+} usable_mem_info_ptrs_t;
+
 /**
  * Based on my observations (printing shit), there are two type 1 mem sections. 
  * The first one is sort of small and starts at 0x0
@@ -103,11 +108,15 @@ typedef struct ll_elem_t
 typedef struct
 {
     ll_elem_t head_elem;
-    u64 base_addr;
-    u64 size;   // Not yet in page pool 
+    u64 base_addr; // For mem not yet in pool
+    u64 size;   // For mem not yet in pool
 } __attribute__((packed)) ll_head_info_t;
 
+// NOTE: base_addr and size are not initialized!
+static ll_elem_t *init_ll_head(u64 base);
+
 //static bool is_empty(ll_elem *ll_head);
+
 static void add_elem(ll_elem_t *head_ptr, ll_elem_t *new_ptr);
 
 // END LINKED LIST STUFF
@@ -123,6 +132,13 @@ static const u8 *find_tag(const u8 *mb_tags_ptr, u32 tag_type);
 
 // Return ptr to head info (should be 0x0)
 static ll_head_info_t *init_pool(const mmap_info_t mmap_info, const elf_info_t elf_info);
+
+static usable_mem_info_ptrs_t get_usable_mem_info_ptrs(const mmap_info_t mmap_info);
+
+// Add the mem from the lower open region to the pool
+static void add_lower_pages(ll_elem_t *const head_ptr, const u64 lower_base, const size_t lower_length);
+
+static ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *const elf_info_ptr, const mem_info_entry_t *const upper);
 
 static u64 round_up_nearest_mult(u64 val, u64 base);
 
@@ -211,12 +227,32 @@ const u8 *find_tag(const u8 *mb_tags_ptr, u32 tag_type)
 
 ll_head_info_t *init_pool(const mmap_info_t mmap_info, const elf_info_t elf_info)
 {
-    mem_info_entry_t *ent_ptrs[2];
-    mem_info_entry_t *curr_ent_ptr;
+    usable_mem_info_ptrs_t usable_mem_info_ptrs = get_usable_mem_info_ptrs(mmap_info);
 
-    // Get the memory info
+    const size_t lower_length = round_down_nearest_mult(usable_mem_info_ptrs.lower->length, PAGE_SIZE);
+    u64 lower_base = round_up_nearest_mult(usable_mem_info_ptrs.lower->base_addr, PAGE_SIZE);
+    assert(lower_base == 0x0);
+
+    //ll_head_info_t *head_info_ptr = init_ll_head(lower_base);
+    ll_elem_t *head_ptr = init_ll_head(lower_base);
+
+    add_lower_pages(head_ptr, lower_base, lower_length);
+
+    ll_head_info_t *head_info_ptr = init_ll_head_info(head_ptr, &elf_info, usable_mem_info_ptrs.upper);
+
+    printk("\t\t BASE: %lx\n", head_info_ptr->base_addr);
+    printk("\t\t BASE + LEN: %lx\n", head_info_ptr->base_addr + head_info_ptr->size);
+
+    return head_info_ptr;
+}
+
+usable_mem_info_ptrs_t get_usable_mem_info_ptrs(const mmap_info_t mmap_info)
+{
+    usable_mem_info_ptrs_t ret;
+    mem_info_entry_t *curr_ent_ptr;
     size_t i = 0;
     size_t cnt = 0;
+
     while(i < mmap_info.num_mem_info_entries)
     {
         curr_ent_ptr = &mmap_info.mem_info_entry_arr[i];
@@ -226,57 +262,70 @@ ll_head_info_t *init_pool(const mmap_info_t mmap_info, const elf_info_t elf_info
             if (curr_ent_ptr->base_addr == 0x0)
             {
                 // Usable mem at 0x0
-                ent_ptrs[0] = curr_ent_ptr;
+                ret.lower = curr_ent_ptr;
             }
             else
             {
                 // Usable mem higher up
-                ent_ptrs[1] = curr_ent_ptr;
+                ret.upper = curr_ent_ptr;
             }
         }
         i++;
     }
     assert(cnt == 2);
 
-    u64 base = round_up_nearest_mult(ent_ptrs[0]->base_addr, PAGE_SIZE);
-    assert(base == 0x0);
-    size_t length = round_down_nearest_mult(ent_ptrs[0]->length, PAGE_SIZE);
+    return ret;
+}
 
-    ll_head_info_t *head_info_ptr = (ll_head_info_t *)base;
-    ll_elem_t *head_ptr = &head_info_ptr->head_elem;
-    head_ptr->next = head_ptr;
-    head_ptr->prev = head_ptr;
-
-    u64 curr_addr = base + PAGE_SIZE;
-    cnt = 0;
-    while(curr_addr < length)
+void add_lower_pages(ll_elem_t *const head_ptr, const u64 lower_base, const size_t lower_length)
+{
+    u64 curr_addr = lower_base + PAGE_SIZE;
+    size_t cnt = 0;
+    while(curr_addr < lower_length)
     {
         add_elem(head_ptr, (ll_elem_t *)curr_addr);
         curr_addr += PAGE_SIZE;
         cnt += 1;
     }
-    assert(curr_addr == length);
-    assert(cnt == (ent_ptrs[0]->length / PAGE_SIZE) - 1);   // -1 for 1st page
+    assert(curr_addr == lower_length);
+    assert(cnt == (lower_length / PAGE_SIZE) - 1);   // -1 for 1st page
+}
 
-    // Calculate the base for the new mem base on elf stuff
+ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *const elf_info_ptr, const mem_info_entry_t *const upper)
+{
+    assert(head_ptr == 0x0);
+
+    ll_head_info_t *head_info_ptr = (ll_head_info_t *)head_ptr;
+
+     // Calculate the base for the new mem base on elf stuff
     // Go to the last section header, add size to addr to get new base
-    base = ent_ptrs[1]->base_addr;
-    assert(base == elf_info.sec_head_ent_arr[1].addr);  // Sec header 0 is at 0x0 with len 0, 1 is first upper
-    length = ent_ptrs[1]->length;
 
-    u32 final_sec_head_index = elf_info.elf_tag.num_sec_head_ents - 1;
-    u64 new_base = elf_info.sec_head_ent_arr[final_sec_head_index].addr + elf_info.sec_head_ent_arr[final_sec_head_index].size;
-    new_base = round_up_nearest_mult(new_base, PAGE_SIZE);
-    u64 size = round_down_nearest_mult((ent_ptrs[1]->length + ent_ptrs[1]->base_addr), PAGE_SIZE) - new_base;
+    assert(upper->base_addr == elf_info_ptr->sec_head_ent_arr[1].addr);  // Sec header 0 is at 0x0 with len 0, 1 is first upper
 
-    head_info_ptr->base_addr = new_base;
-    head_info_ptr->size = size;
+    const u32 final_sec_head_index = elf_info_ptr->elf_tag.num_sec_head_ents - 1;
+    u64 upper_base = elf_info_ptr->sec_head_ent_arr[final_sec_head_index].addr + elf_info_ptr->sec_head_ent_arr[final_sec_head_index].size;
 
-    printk("\t\t BASE: %lx\n", head_info_ptr->base_addr);
-    printk("\t\t BASE + LEN: %lx\n", head_info_ptr->base_addr + head_info_ptr->size);
+    upper_base = round_up_nearest_mult(upper_base, PAGE_SIZE);
+    size_t upper_length = round_down_nearest_mult((upper->length + upper->base_addr), PAGE_SIZE) - upper_base;
+
+    head_info_ptr->base_addr = upper_base;
+    head_info_ptr->size = upper_length;
 
     return head_info_ptr;
+}   
+
+
+ll_elem_t *init_ll_head(u64 base)
+{
+    ll_elem_t *head_ptr = (ll_elem_t *)base;
+
+    head_ptr->next = head_ptr;
+    head_ptr->prev = head_ptr;
+
+    return head_ptr;
 }
+
+
 
 void add_elem(ll_elem_t *head_ptr, ll_elem_t *new_ptr)
 {
