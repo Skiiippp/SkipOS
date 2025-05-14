@@ -6,6 +6,7 @@
 - M03: keyboard
 - M04: interrupts
 - M05: serial
+- M06: page frame allocator
 
 ### Tech Debt
 - Optimize scan code search with a LUT
