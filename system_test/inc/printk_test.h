@@ -1,3 +1,3 @@
 #pragma once
 
-extern void printk_test();
+void printk_test();

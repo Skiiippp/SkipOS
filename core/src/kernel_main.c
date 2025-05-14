@@ -11,14 +11,18 @@
 #include <limits.h>
 
 #include "../../unit_test/inc/ut_main.h"
-#include "../../system_test/inc/st_main.h"
+#include "../../system_test/inc/printk_test.h"
+#include "../../system_test/inc/pf_alloc_test.h"
+
 
 /**
  * BEGIN PRIVATE
  */
 
 //#define RUN_UNIT_TESTS
-//#define RUN_SYSTEM_TESTS
+//#define RUN_PRINTK_TESTS
+#define RUN_PF_ALLOC_TESTS
+
 //#define PAUSE
 
 /**
@@ -47,8 +51,12 @@ int kernel_main(u8 *mb_tags_ptr)
 
     IRQ_start();
 
-#ifdef RUN_UNIT_TESTS
-    ut_main();
+#ifdef RUN_PF_ALLOC_TESTS
+    pf_all_test();
+#endif
+
+#ifdef RUN_PRINTK_TESTS
+    printk_test();
 #endif
 
 #ifdef RUN_SYSTEM_TESTS

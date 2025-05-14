@@ -9,8 +9,6 @@
  * BEGIN PRIVATE
  */
 
-#define PAGE_SIZE 0x1000
-
 #define MMAP_TAG_TYPE 6
 #define END_TAG_TYPE 0
 #define ELF_TAG_TYPE 9
@@ -22,6 +20,8 @@
 #define MMAP_HEADER_OFFSET_TO_INFO_ARR 16
 
 #define METADATA_ADDR 0x0
+
+#define PAGES_TO_ADD_IF_POOL_EMPTY 500
 
 typedef struct
 {
@@ -109,15 +109,19 @@ typedef struct
 {
     ll_elem_t head_elem;
     u64 base_addr; // For mem not yet in pool
-    u64 size;   // For mem not yet in pool
+    size_t length;   // For mem not yet in pool
+    size_t unpooled_page_cnt; // Num pages not yet in pool
 } __attribute__((packed)) ll_head_info_t;
 
 // NOTE: base_addr and size are not initialized!
 static ll_elem_t *init_ll_head(u64 base);
 
-//static bool is_empty(ll_elem *ll_head);
+static bool is_empty(const ll_elem_t *const ll_head);
 
 static void add_elem(ll_elem_t *head_ptr, ll_elem_t *new_ptr);
+
+// Pops elem prev to head
+static ll_elem_t *pop_elem(ll_elem_t *head_ptr);
 
 // END LINKED LIST STUFF
 
@@ -138,7 +142,11 @@ static usable_mem_info_ptrs_t get_usable_mem_info_ptrs(const mmap_info_t mmap_in
 // Add the mem from the lower open region to the pool
 static void add_lower_pages(ll_elem_t *const head_ptr, const u64 lower_base, const size_t lower_length);
 
+static void add_new_upper_pages(ll_head_info_t *const head_info_ptr, const size_t num_new_pages);
+
 static ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *const elf_info_ptr, const mem_info_entry_t *const upper);
+
+static ll_head_info_t *get_ll_head_info_ptr();
 
 static u64 round_up_nearest_mult(u64 val, u64 base);
 
@@ -154,22 +162,59 @@ static void __attribute__((unused)) print_sec_head_ents(sec_head_ent_t *sec_head
 
 void MMU_init(const u8 *mb_tags_ptr)
 {
-    const u8 *mmap_ptr = find_tag(mb_tags_ptr, MMAP_TAG_TYPE);
+    const u8 *const mmap_ptr = find_tag(mb_tags_ptr, MMAP_TAG_TYPE);
     assert(mmap_ptr);
 
-    mmap_info_t mmap_info = get_mmap_info(mmap_ptr);
-    printk("Num mem info entries: %lu\n", mmap_info.num_mem_info_entries);
-    print_mem_infos(mmap_info.mem_info_entry_arr, mmap_info.num_mem_info_entries);
-    printk("\n");
+    const mmap_info_t mmap_info = get_mmap_info(mmap_ptr);
+    // printk("Num mem info entries: %lu\n", mmap_info.num_mem_info_entries);
+    // print_mem_infos(mmap_info.mem_info_entry_arr, mmap_info.num_mem_info_entries);
 
-    const u8 *elf_ptr = find_tag(mb_tags_ptr, ELF_TAG_TYPE);
+    const u8 *const elf_ptr = find_tag(mb_tags_ptr, ELF_TAG_TYPE);
     assert(elf_ptr);
 
-    elf_info_t elf_info = get_elf_info(elf_ptr);
-    printk("Num sec head entries; %u\n", elf_info.elf_tag.num_sec_head_ents);
-    print_sec_head_ents(elf_info.sec_head_ent_arr, elf_info.elf_tag.num_sec_head_ents);
+    const elf_info_t elf_info = get_elf_info(elf_ptr);
+    // printk("Num sec head entries; %u\n", elf_info.elf_tag.num_sec_head_ents);
+    // print_sec_head_ents(elf_info.sec_head_ent_arr, elf_info.elf_tag.num_sec_head_ents);
 
-    init_pool(mmap_info, elf_info);
+    ll_head_info_t *const head_info_ptr = init_pool(mmap_info, elf_info);
+
+    (void)head_info_ptr;
+}
+
+void *MMU_pf_alloc()
+{
+    ll_head_info_t *head_info_ptr = get_ll_head_info_ptr();
+
+    if (is_empty(&head_info_ptr->head_elem))
+    {
+        if (head_info_ptr->unpooled_page_cnt == 0)
+        {
+            // No more pages to add - return invalid addr - YES THIS IS INVALID AT THIS POINT
+            return NULL;
+        }
+
+        size_t pages_to_add;
+        if (PAGES_TO_ADD_IF_POOL_EMPTY > head_info_ptr->unpooled_page_cnt)
+        {
+            pages_to_add = head_info_ptr->unpooled_page_cnt;
+        }
+        else
+        {
+            pages_to_add = PAGES_TO_ADD_IF_POOL_EMPTY;
+        }
+        add_new_upper_pages(head_info_ptr, pages_to_add);
+    }
+
+    return (void *)pop_elem(&head_info_ptr->head_elem);
+}
+
+void MMU_pf_free(void *pf)
+{
+    assert(pf);
+
+    ll_head_info_t *head_info_ptr = get_ll_head_info_ptr();
+
+    add_elem(&head_info_ptr->head_elem, (ll_elem_t *)pf);
 }
 
 mmap_info_t get_mmap_info(const u8 *mmap_ptr)
@@ -233,7 +278,7 @@ ll_head_info_t *init_pool(const mmap_info_t mmap_info, const elf_info_t elf_info
     u64 lower_base = round_up_nearest_mult(usable_mem_info_ptrs.lower->base_addr, PAGE_SIZE);
     assert(lower_base == 0x0);
 
-    //ll_head_info_t *head_info_ptr = init_ll_head(lower_base);
+    // ERROR IS HERE - JUST KIDDING PROB BEFORE?
     ll_elem_t *head_ptr = init_ll_head(lower_base);
 
     add_lower_pages(head_ptr, lower_base, lower_length);
@@ -241,7 +286,7 @@ ll_head_info_t *init_pool(const mmap_info_t mmap_info, const elf_info_t elf_info
     ll_head_info_t *head_info_ptr = init_ll_head_info(head_ptr, &elf_info, usable_mem_info_ptrs.upper);
 
     printk("\t\t BASE: %lx\n", head_info_ptr->base_addr);
-    printk("\t\t BASE + LEN: %lx\n", head_info_ptr->base_addr + head_info_ptr->size);
+    printk("\t\t BASE + LEN: %lx\n", head_info_ptr->base_addr + head_info_ptr->length);
 
     return head_info_ptr;
 }
@@ -291,6 +336,29 @@ void add_lower_pages(ll_elem_t *const head_ptr, const u64 lower_base, const size
     assert(cnt == (lower_length / PAGE_SIZE) - 1);   // -1 for 1st page
 }
 
+void add_new_upper_pages(ll_head_info_t *const head_info_ptr, const size_t num_new_pages)
+{
+    assert(head_info_ptr->unpooled_page_cnt >= num_new_pages);
+    assert(num_new_pages > 0);
+
+    const u64 orig_limit_addr = head_info_ptr->base_addr + head_info_ptr->length;
+
+    ll_elem_t *new_elem_ptr;
+
+    for (size_t i = 0; i < num_new_pages; i++)
+    {
+        new_elem_ptr = (ll_elem_t *)head_info_ptr->base_addr;
+        add_elem(&head_info_ptr->head_elem, new_elem_ptr);
+        head_info_ptr->base_addr += PAGE_SIZE;
+    }
+
+    head_info_ptr->length -= num_new_pages * PAGE_SIZE;
+    head_info_ptr->unpooled_page_cnt -= num_new_pages;
+
+    const u64 new_limit_addr = head_info_ptr->base_addr + head_info_ptr->length;
+    assert(orig_limit_addr == new_limit_addr);
+}
+
 ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *const elf_info_ptr, const mem_info_entry_t *const upper)
 {
     assert(head_ptr == 0x0);
@@ -309,7 +377,9 @@ ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *const e
     size_t upper_length = round_down_nearest_mult((upper->length + upper->base_addr), PAGE_SIZE) - upper_base;
 
     head_info_ptr->base_addr = upper_base;
-    head_info_ptr->size = upper_length;
+    head_info_ptr->length = upper_length;
+    head_info_ptr->unpooled_page_cnt = head_info_ptr->length / PAGE_SIZE;
+    assert(head_info_ptr->length % PAGE_SIZE == 0);
 
     return head_info_ptr;
 }   
@@ -317,6 +387,7 @@ ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *const e
 
 ll_elem_t *init_ll_head(u64 base)
 {
+
     ll_elem_t *head_ptr = (ll_elem_t *)base;
 
     head_ptr->next = head_ptr;
@@ -325,7 +396,10 @@ ll_elem_t *init_ll_head(u64 base)
     return head_ptr;
 }
 
-
+bool is_empty(const ll_elem_t *const ll_head)
+{
+    return (ll_head->next == ll_head->prev);
+}
 
 void add_elem(ll_elem_t *head_ptr, ll_elem_t *new_ptr)
 {
@@ -335,6 +409,22 @@ void add_elem(ll_elem_t *head_ptr, ll_elem_t *new_ptr)
     head_ptr->prev = new_ptr;
 }
 
+ll_elem_t *pop_elem(ll_elem_t *head_ptr)
+{
+    assert(!is_empty(head_ptr));
+
+    ll_elem_t *popped_ptr = head_ptr->prev;
+
+    popped_ptr->prev->next = head_ptr;
+    head_ptr->prev = popped_ptr->prev;
+
+    return popped_ptr;
+}
+
+ll_head_info_t *get_ll_head_info_ptr()
+{
+    return (ll_head_info_t *)(0x0); // This is awful
+}
 
 u64 round_up_nearest_mult(u64 val, u64 mult)
 {
@@ -359,10 +449,14 @@ void print_mem_infos(mem_info_entry_t *mem_info_entry_arr, size_t num_entries)
         printk("Length: %lx\n", mem_info_entry_arr[i].length);
         printk("Base + Len: %lx\n", mem_info_entry_arr[i].base_addr + mem_info_entry_arr[i].length);
         printk("Type: %x\n", mem_info_entry_arr[i].type);
+
         if (mem_info_entry_arr[i].type == 1)
         {
             printk("\t\tNum pages: %lx\n", mem_info_entry_arr[i].length/PAGE_SIZE);
+
+            // ERROR HERE ON 2ND REGION
             printk("\t\tLength mod page size: %lx\n", mem_info_entry_arr[i].length % PAGE_SIZE);
+            // ERROR HAPPENS WHEN i=3
         }
     }
 }
