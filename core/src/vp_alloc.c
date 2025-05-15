@@ -1,3 +1,15 @@
 #include "../inc/memory.h"
 
-void MMU_init_vp();
+/**
+ * BEGIN PRIVATE
+ */
+
+/**
+ * END PRIVATE
+ */
+
+
+void MMU_init_vp()
+{
+    
+}

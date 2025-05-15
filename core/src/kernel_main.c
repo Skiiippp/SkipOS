@@ -59,8 +59,6 @@ int kernel_main(u8 *mb_tags_ptr)
 
     IRQ_start();
 
-    assert(false);
-
 #ifdef RUN_PF_ALLOC_TESTS
     pf_all_test();
 #endif
