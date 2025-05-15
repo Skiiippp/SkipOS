@@ -7,6 +7,7 @@
 #include "../inc/gdt.h"
 #include "../inc/serial.h"
 #include "../inc/memory.h"
+#include "../inc/assert.h"
 
 #include <limits.h>
 
@@ -21,7 +22,7 @@
 
 //#define RUN_UNIT_TESTS
 //#define RUN_PRINTK_TESTS
-#define RUN_PF_ALLOC_TESTS
+//#define RUN_PF_ALLOC_TESTS
 
 //#define PAUSE
 
@@ -39,17 +40,26 @@ int kernel_main(u8 *mb_tags_ptr)
 
     VGA_clear();
 
+    printk("\n\nWELCOME TO SKIPOS\n\n");
+
     GDT_init();
+    printk("GDT inititialized.\n");
 
     IRQ_init();
+    printk("Interrupt system initialized.\n");
 
     KBD_init();
+    printk("Keyboard initialized.\n");
 
     SER_init();
+    printk("Serial output initialized.\n");
 
-    MMU_init(mb_tags_ptr);
+    const size_t mem_size = MMU_init_pf(mb_tags_ptr);
+    printk("Memory system initialized, physical size: 0x%lx.\n", mem_size);
 
     IRQ_start();
+
+    assert(false);
 
 #ifdef RUN_PF_ALLOC_TESTS
     pf_all_test();

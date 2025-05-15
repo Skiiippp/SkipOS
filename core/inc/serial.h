@@ -7,3 +7,5 @@
 void SER_init();
 
 void SER_write(const u8 *buff, size_t len);
+
+void SER_flush();

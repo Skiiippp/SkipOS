@@ -28,5 +28,4 @@ SECTIONS {
     {
         *(.bss)
     }
-    
 }

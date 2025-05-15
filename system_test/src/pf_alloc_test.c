@@ -7,7 +7,7 @@
 
 #include <stddef.h>
 
-#define NUM_ADDRS 1
+#define NUM_ADDRS 5
 
 void pf_simple_test()
 {
@@ -72,13 +72,6 @@ void pf_stress_test()
         }
         
         page_cnt++;
-
-        // if (page_cnt == 1)
-        // {
-        //     // Cant access when page_cnt == 22 after freeing once before
-        //     int j = 0;
-        //     while(!j);
-        // }
     }
 
     printk("Total pages alloced: %lu\n", page_cnt);

@@ -3,14 +3,16 @@
 #include "common.h"
 #include "printk.h"
 #include "interrupt.h"
+#include "serial.h"
 
 #define assert(condition)   \
     do                      \
     {                       \
         if (!(condition))    \
         {                   \
-            asm volatile ("cli");   \
+            CLI;            \
             printk("Assert failed: %s:%u\n", __FILE__, __LINE__);   \
+            SER_flush();     \
             HLT;   \
         }                   \
     }                       \

@@ -148,6 +148,8 @@ static ll_head_info_t *init_ll_head_info(ll_elem_t *head_ptr, const elf_info_t *
 
 static ll_head_info_t *get_ll_head_info_ptr();
 
+static size_t get_sys_mem_size_byte(const mmap_info_t *const mmap_info_ptr);
+
 static u64 round_up_nearest_mult(u64 val, u64 base);
 
 static u64 round_down_nearest_mult(u64 val, u64 base);
@@ -160,7 +162,7 @@ static void __attribute__((unused)) print_sec_head_ents(sec_head_ent_t *sec_head
  * END PRIVATE
  */
 
-void MMU_init(const u8 *mb_tags_ptr)
+size_t MMU_init_pf(const u8 *mb_tags_ptr)
 {
     const u8 *const mmap_ptr = find_tag(mb_tags_ptr, MMAP_TAG_TYPE);
     assert(mmap_ptr);
@@ -179,6 +181,8 @@ void MMU_init(const u8 *mb_tags_ptr)
     ll_head_info_t *const head_info_ptr = init_pool(mmap_info, elf_info);
 
     (void)head_info_ptr;
+
+    return get_sys_mem_size_byte(&mmap_info);
 }
 
 void *MMU_pf_alloc()
@@ -285,8 +289,8 @@ ll_head_info_t *init_pool(const mmap_info_t mmap_info, const elf_info_t elf_info
 
     ll_head_info_t *head_info_ptr = init_ll_head_info(head_ptr, &elf_info, usable_mem_info_ptrs.upper);
 
-    printk("\t\t BASE: %lx\n", head_info_ptr->base_addr);
-    printk("\t\t BASE + LEN: %lx\n", head_info_ptr->base_addr + head_info_ptr->length);
+    // printk("\t\t BASE: %lx\n", head_info_ptr->base_addr);
+    // printk("\t\t BASE + LEN: %lx\n", head_info_ptr->base_addr + head_info_ptr->length);
 
     return head_info_ptr;
 }
@@ -424,6 +428,15 @@ ll_elem_t *pop_elem(ll_elem_t *head_ptr)
 ll_head_info_t *get_ll_head_info_ptr()
 {
     return (ll_head_info_t *)(0x0); // This is awful
+}
+
+size_t get_sys_mem_size_byte(const mmap_info_t *const mmap_info_ptr)
+{
+    assert(mmap_info_ptr);
+
+    const size_t num_entries = mmap_info_ptr->num_mem_info_entries;
+    const mem_info_entry_t *const mem_info_ptr = &mmap_info_ptr->mem_info_entry_arr[num_entries-1];
+    return mem_info_ptr->base_addr + mem_info_ptr->length;
 }
 
 u64 round_up_nearest_mult(u64 val, u64 mult)

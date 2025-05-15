@@ -25,7 +25,7 @@
 #define BASE_BAUD 115200
 #define BAUD_DIVISOR (BASE_BAUD/UART_BAUD) // 115200/9600
 
-#define BUFF_SIZE 128
+#define BUFF_SIZE 1024
 
 typedef struct
 {
@@ -99,9 +99,33 @@ void SER_write(const u8 *buff, size_t len)
     }
 }
 
+void SER_flush()
+{
+    bool enable_ints = false;
+
+    if (IRQ_are_interrupts_enabled())
+    {
+        enable_ints = true;
+        CLI;
+    }
+
+    u8 out_val;
+
+    while(consume(&ser_state, &out_val))
+    {
+        write_ser_reg(TRAN_OFFSET, out_val);
+    }
+    ser_state.busy = false;
+
+    if (enable_ints)
+    {
+        STI;
+    }
+}
+
 void init_hw_write(ser_state_t *s_ptr)
 {
-    assert(s_ptr);
+    assert_noprint(s_ptr);
 
     if (s_ptr->busy)
     {
@@ -136,21 +160,21 @@ u8 read_ser_reg(u8 offset)
 
 bool is_buff_empty(ser_state_t *s_ptr)
 {
-    assert(!IRQ_are_interrupts_enabled());
+    assert_noprint(!IRQ_are_interrupts_enabled());
 
     return (s_ptr->c == s_ptr->p);
 }
 
 bool is_buff_full(ser_state_t *s_ptr)
 {
-    assert(!IRQ_are_interrupts_enabled());
+    assert_noprint(!IRQ_are_interrupts_enabled());
 
     return ((s_ptr->p == s_ptr->c - 1) || (s_ptr->p == s_ptr->c + BUFF_SIZE - 1));
 }
 
 bool consume(ser_state_t *s_ptr, u8 *c_val_ptr)
 {
-    assert(!IRQ_are_interrupts_enabled());
+    assert_noprint(!IRQ_are_interrupts_enabled());
 
     if (is_buff_empty(s_ptr))
     {
@@ -169,7 +193,7 @@ bool consume(ser_state_t *s_ptr, u8 *c_val_ptr)
 
 bool produce(ser_state_t *s_ptr, u8 p_val)
 {
-    assert(!IRQ_are_interrupts_enabled());
+    assert_noprint(!IRQ_are_interrupts_enabled());
 
     if (is_buff_full(s_ptr))
     {
@@ -190,8 +214,8 @@ void ser_irq_handler(u8 irq_index, u32 error, void *arg)
 {
     (void)error;
 
-    assert(irq_index == COM1_IRQ_NUM);
-    assert(arg);
+    assert_noprint(irq_index == COM1_IRQ_NUM);
+    assert_noprint(arg);
 
     ser_state_t *s_ptr = (ser_state_t *)arg;
     const u8 iir_val = read_ser_reg(IIR_OFFSET);
