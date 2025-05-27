@@ -55,7 +55,10 @@ int kernel_main(u8 *mb_tags_ptr)
     printk("Serial output initialized.\n");
 
     const size_t mem_size = MMU_init_pf(mb_tags_ptr);
-    printk("Memory system initialized, physical size: 0x%lx.\n", mem_size);
+    printk("Physical memory system initialized, physical size: 0x%lx.\n", mem_size);
+
+    MMU_init_vp();
+    printk("Virtual memory system initialized.\n");
 
     IRQ_start();
 
