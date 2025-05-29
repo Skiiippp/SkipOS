@@ -148,6 +148,7 @@ enable_paging:
     ret
 
 section .bss
+global p4_table
 align 4096
 p4_table:
     resb 4096

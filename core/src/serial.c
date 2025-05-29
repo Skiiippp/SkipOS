@@ -232,6 +232,4 @@ void ser_irq_handler(u8 irq_index, u32 error, void *arg)
         s_ptr->busy = false;
         init_hw_write(s_ptr);
     }
-
-    IRQ_end_of_interrupt(irq_index);
 }

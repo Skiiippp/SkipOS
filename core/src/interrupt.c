@@ -308,6 +308,8 @@ u64 get_rflags()
 void isr_helper(u8 irq_num, u32 error)
 {
     irq_table[irq_num].handler(irq_num, error, irq_table[irq_num].arg);
+
+    IRQ_end_of_interrupt(irq_num);
 }
 
 void double_fault_handler(u8 irq_index, u32 error, void *arg)

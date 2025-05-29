@@ -265,8 +265,6 @@ void kbd_isr_handler(u8 irq_num, u32 error, void *arg)
     {
         VGA_display_char(char_from_scode(s, kbd_state_ptr->shift_pressed));
     }
-
-    IRQ_end_of_interrupt(KBD_INT_NUM);
 }
 
 
