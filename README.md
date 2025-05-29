@@ -7,6 +7,7 @@
 - M04: interrupts
 - M05: serial
 - M06: page frame allocator
+- M07: virtual page allocator
 
 ### Tech Debt
 - Optimize scan code search with a LUT
