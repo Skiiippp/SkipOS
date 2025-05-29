@@ -39,6 +39,8 @@ typedef struct
 
 static page_table_t page_table;
 
+static uintptr_t kern_heap_top;
+
 static void setup_identity_paging(page_table_t *page_table_ptr);
 
 static uintptr_t __attribute__((unused)) get_physical_addr(page_table_t *page_table_ptr, uintptr_t virtual_addr);
@@ -58,8 +60,7 @@ static bool is_next_page_present(u64 entry);
 // Page fault ISR
 static void page_fault_handler(u8 irq_index, u32 error, void *arg);
 
-static void virt_test();
-
+static void __attribute__((unused)) virt_test();
 
 /**
  * END PRIVATE
@@ -75,50 +76,72 @@ void MMU_init_vp()
 
     IRQ_set_handler(PF_INT_NUM, page_fault_handler, NULL);
 
-    virt_test();
+    kern_heap_top = KERN_HEAP_BASE;
+}
+
+void *MMU_alloc_page()
+{
+    return MMU_alloc_pages(1);
+}
+
+void *MMU_alloc_pages(size_t num)
+{
+    void *ret = (void *)kern_heap_top;
+
+    for(size_t i = 0; i < num; i++)
+    {
+        alloc_virtual_page(&page_table, kern_heap_top, true);
+        kern_heap_top += PAGE_SIZE;
+    }
+
+    return ret;
+}
+
+void MMU_free_page(void *vp)
+{
+    MMU_free_pages(vp, 1);
+}
+
+void MMU_free_pages(void *vp, size_t num)
+{
+    assert((uintptr_t)vp % PAGE_SIZE == 0);
+
+    uintptr_t next_to_free = (uintptr_t)vp;
+    u64 *lowest_entry_ptr;
+    pt_level_t level;
+
+    for(size_t i = 0; i < num; i++)
+    {
+        lowest_entry_ptr = get_lowest_present_page(&page_table, next_to_free, &level);
+        assert(level == PHYSICAL || level == L1);
+
+        if(level == PHYSICAL)
+        {
+            *lowest_entry_ptr &= ~(PRESENT_MASK | WRITEABLE_MASK);
+            MMU_pf_free((void *)lowest_entry_ptr);
+        }
+        else if(level == L1)
+        {
+            assert(*lowest_entry_ptr & DEMAND_MASK);
+            assert(!(*lowest_entry_ptr & (PRESENT_MASK | DEMAND_MASK)));
+            *lowest_entry_ptr &= ~DEMAND_MASK;
+        }
+        else
+        {
+            assert(false);
+        }
+    }
 }
 
 void virt_test()
 {
-    // uintptr_t new_phys_addr;
-    // pt_level_t level;
+    u8 *test;
 
-    // get_lowest_present_page(&page_table, KERN_HEAP_BASE, &level);
-    // assert(level == L4);
+    test = (u8 *)MMU_alloc_pages(2);
 
-    // alloc_virtual_page(&page_table, KERN_HEAP_BASE, false);
-    // get_lowest_present_page(&page_table, KERN_HEAP_BASE, &level);
-    // assert(level == PHYSICAL);
+    *test = 0xAA;
 
-    // get_lowest_present_page(&page_table, KERN_HEAP_BASE + PAGE_SIZE, &level);
-    // assert(level == L1);
-
-    // new_phys_addr = get_physical_addr(&page_table, KERN_HEAP_BASE);
-
-    // (void)new_phys_addr;
-    
-    volatile u64 *test_mem = (u64 *)KERN_HEAP_BASE;
-    pt_level_t level;
-    u64 l4_entry, l3_entry, l2_entry, l1_entry;
-
-    alloc_virtual_page(&page_table, (uintptr_t)test_mem, true);
-
-    printk("Lowest whatever: %p\n", get_lowest_present_page(&page_table, (uintptr_t)test_mem, &level));
-    l4_entry = page_table.l4_table[2];
-    l3_entry = *(u64 *)(l4_entry & ~0xFFF);
-    l2_entry = *(u64 *)(l3_entry & ~0xFFF);
-    l1_entry = *(u64 *)(l2_entry & ~0xFFF);
-
-    printk("L4: %lx\nL3: %lx\nL2: %lx\nL1: %lx\n", l4_entry, l3_entry, l2_entry, l1_entry);
-
-    *test_mem = 12;
-    assert(*test_mem == 12);
-
-    // int j = 0;
-    // while(!j);
-
-    // *test_mem = 12;
-    // printk("Value of test_mem: %lu\n", *test_mem);
+    MMU_free_pages(test, 2);
 }
 
 void setup_identity_paging(page_table_t *page_table_ptr)
@@ -278,6 +301,4 @@ void page_fault_handler(u8 irq_index, u32 error, void *arg)
     new_page = (u64 *)MMU_pf_alloc();
     *lowest_entry_ptr = (u64)new_page;
     *lowest_entry_ptr |= WRITEABLE_MASK | PRESENT_MASK;
-
-    printk("Handled page fault!\n");
 }

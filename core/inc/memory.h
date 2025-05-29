@@ -21,8 +21,12 @@ void MMU_pf_free(void *pf);
  * BEGIN Virtual page allocator stuff
  */
 void MMU_init_vp();
+
+// Bellow funcs are for kernel heap management, but not kmalloc itself
+void *MMU_alloc_page();
+void *MMU_alloc_pages(size_t num);
+void MMU_free_page(void *vp);
+void MMU_free_pages(void *vp, size_t num);
 /**
  * END Virtual page allocator stuff
  */
-
- 
