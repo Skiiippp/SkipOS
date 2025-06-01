@@ -8,12 +8,14 @@
 #include "../inc/serial.h"
 #include "../inc/memory.h"
 #include "../inc/assert.h"
+#include "../inc/kmalloc.h"
 
 #include <limits.h>
 
 #include "../../unit_test/inc/ut_main.h"
 #include "../../system_test/inc/printk_test.h"
 #include "../../system_test/inc/pf_alloc_test.h"
+#include "../../system_test/inc/kmalloc_test.h"
 
 
 /**
@@ -23,6 +25,7 @@
 //#define RUN_UNIT_TESTS
 //#define RUN_PRINTK_TESTS
 //#define RUN_PF_ALLOC_TESTS
+#define RUN_KMALLOC_TESTS
 
 //#define PAUSE
 
@@ -60,7 +63,13 @@ int kernel_main(u8 *mb_tags_ptr)
     MMU_init_vp();
     printk("Virtual memory system initialized.\n");
 
+    kmalloc_init();
+
     IRQ_start();
+
+#ifdef RUN_KMALLOC_TESTS
+    kmalloc_test();
+#endif
 
 #ifdef RUN_PF_ALLOC_TESTS
     pf_all_test();

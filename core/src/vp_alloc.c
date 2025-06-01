@@ -105,6 +105,7 @@ void MMU_free_page(void *vp)
 void MMU_free_pages(void *vp, size_t num)
 {
     assert((uintptr_t)vp % PAGE_SIZE == 0);
+    assert(num > 0);
 
     uintptr_t next_to_free = (uintptr_t)vp;
     u64 *lowest_entry_ptr;
@@ -114,10 +115,12 @@ void MMU_free_pages(void *vp, size_t num)
     {
         lowest_entry_ptr = get_lowest_present_page(&page_table, next_to_free, &level);
         assert(level == PHYSICAL || level == L1);
+        assert(level == PHYSICAL);
 
         if(level == PHYSICAL)
         {
             *lowest_entry_ptr &= ~(PRESENT_MASK | WRITEABLE_MASK);
+            printk("FREE PHYSICAL: %p\n", (void *)lowest_entry_ptr);
             MMU_pf_free((void *)lowest_entry_ptr);
         }
         else if(level == L1)
@@ -130,6 +133,8 @@ void MMU_free_pages(void *vp, size_t num)
         {
             assert(false);
         }
+
+        next_to_free += PAGE_SIZE;
     }
 }
 
@@ -291,7 +296,11 @@ void page_fault_handler(u8 irq_index, u32 error, void *arg)
     asm volatile ("mov %0, %%cr3" : "=r"(fault_page_table.l4_table));
     asm volatile ("mov %0, %%cr2" : "=r"(fault_addr));    
 
+    fault_addr -= fault_addr % PAGE_SIZE;
+
     lowest_entry_ptr = get_lowest_present_page(&fault_page_table, fault_addr, &level);
+    assert(lowest_entry_ptr);
+
     if (!(*lowest_entry_ptr & DEMAND_MASK) || level != L1)
     {
         printk("Unhandled page fault.\nFault address: %p\nPage table location: %p\nError code: %u\n", (void *)fault_addr, fault_page_table.l4_table, error);
@@ -299,6 +308,7 @@ void page_fault_handler(u8 irq_index, u32 error, void *arg)
     }
     
     new_page = (u64 *)MMU_pf_alloc();
+    printk("NEW PAGE PHYSICAL: %p\n", new_page);
     *lowest_entry_ptr = (u64)new_page;
     *lowest_entry_ptr |= WRITEABLE_MASK | PRESENT_MASK;
 }
