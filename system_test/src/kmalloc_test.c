@@ -7,7 +7,7 @@
 
 void kmalloc_test()
 {
-    const u8 pattern = 0xFA;
+    //const u8 pattern = 0xFA;
     u8 *mem;
 
     // mem = (u8 *)kmalloc(0xFF5);
@@ -20,16 +20,29 @@ void kmalloc_test()
     // Sometime page fault when i == 0xFF5
     // Looks like some kind of overflow issue - "pattern" shows up in addr faults
     // Seems like things work until you have to allocate more memory than avaliable in the block groups.
-    for(size_t i = 0; i < 10; i++)
-    {
-        printk("%lx\n", i);
-        mem = (u8 *)kmalloc(0x1000);
-        printk("Addr: %p\n", mem);
+    // for(size_t i = 0; i < 10; i++)
+    // {
+    //     printk("%lx\n", i);
+    //     mem = (u8 *)kmalloc(0x1000);
+    //     printk("Addr: %p\n", mem);
 
-        memset(mem, pattern, 0x1000);
-        for (size_t j = 0; j < 0x1000; j++)
+    //     memset(mem, pattern, 0x1000);
+    //     for (size_t j = 0; j < 0x1000; j++)
+    //     {
+    //         assert(mem[j] == pattern);
+    //     }
+
+    //     kfree(mem);
+    // }
+
+    for (size_t i = 1; i < 0x2000; i++)
+    {
+        mem = (u8 *)kmalloc(i);
+
+        memset(mem, (u8)i, i);
+        for(size_t j = 0; j < i; j++)
         {
-            assert(mem[j] == pattern);
+            assert(mem[j] == (u8)i);
         }
 
         kfree(mem);

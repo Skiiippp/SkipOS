@@ -96,16 +96,11 @@ void kfree(void *ptr)
     const size_t size = old_mem->size;
     kmalloc_pool_t *const pool_ptr = old_mem->pool;
 
-    printk("Pool ptr: %p\n", pool_ptr);
-
     if (pool_ptr == NULL)
     {
         MMU_free_pages((void *)old_mem, size/PAGE_SIZE);
         return;
     }
-
-    // temp
-    assert(false);
 
     freelist_t *const new_head = (freelist_t *)old_mem;
     new_head->next = pool_ptr->head;

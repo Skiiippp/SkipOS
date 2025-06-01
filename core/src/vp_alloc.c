@@ -120,7 +120,6 @@ void MMU_free_pages(void *vp, size_t num)
         if(level == PHYSICAL)
         {
             *lowest_entry_ptr &= ~(PRESENT_MASK | WRITEABLE_MASK);
-            printk("FREE PHYSICAL: %p\n", (void *)lowest_entry_ptr);
             MMU_pf_free((void *)lowest_entry_ptr);
         }
         else if(level == L1)
@@ -308,7 +307,6 @@ void page_fault_handler(u8 irq_index, u32 error, void *arg)
     }
     
     new_page = (u64 *)MMU_pf_alloc();
-    printk("NEW PAGE PHYSICAL: %p\n", new_page);
     *lowest_entry_ptr = (u64)new_page;
     *lowest_entry_ptr |= WRITEABLE_MASK | PRESENT_MASK;
 }
