@@ -8,6 +8,7 @@
 - M05: serial
 - M06: page frame allocator
 - M07: virtual page allocator
+- MO8: heap allocator (kmalloc)
 
 ### Tech Debt
 - Optimize scan code search with a LUT
