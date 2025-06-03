@@ -64,6 +64,7 @@ int kernel_main(u8 *mb_tags_ptr)
     printk("Virtual memory system initialized.\n");
 
     kmalloc_init();
+    printk("Kernel heap allocator initialized.\n");
 
     IRQ_start();
 
