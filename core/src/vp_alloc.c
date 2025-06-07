@@ -53,7 +53,7 @@ static void alloc_virtual_page(page_table_t *page_table_ptr, uintptr_t virtual_a
 /**
  * @brief Gets the lowest present page in the page table for the virtual address. Returns ptr to relevent entry. pt_level_ptr gives pt level of returned entry ptr.
  */
-static u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, pt_level_t *pt_level_ptr);
+static u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, pt_level_t *pt_level_ptr, u64 **prev_entry_ptr_ptr);
 
 static bool is_next_page_present(u64 entry);
 
@@ -109,23 +109,25 @@ void MMU_free_pages(void *vp, size_t num)
 
     uintptr_t next_to_free = (uintptr_t)vp;
     u64 *lowest_entry_ptr;
+    u64 *prev_entry_ptr;
     pt_level_t level;
 
     for(size_t i = 0; i < num; i++)
     {
-        lowest_entry_ptr = get_lowest_present_page(&page_table, next_to_free, &level);
+        lowest_entry_ptr = get_lowest_present_page(&page_table, next_to_free, &level, &prev_entry_ptr);
         assert(level == PHYSICAL || level == L1);
-        assert(level == PHYSICAL);
 
         if(level == PHYSICAL)
         {
-            *lowest_entry_ptr &= ~(PRESENT_MASK | WRITEABLE_MASK);
+            *prev_entry_ptr &= ~(PRESENT_MASK | WRITEABLE_MASK);
             MMU_pf_free((void *)lowest_entry_ptr);
+            asm volatile ("invlpg [%0]" :: "r" (vp));
         }
         else if(level == L1)
         {
+            // Double free likely if asserts fail
             assert(*lowest_entry_ptr & DEMAND_MASK);
-            assert(!(*lowest_entry_ptr & (PRESENT_MASK | DEMAND_MASK)));
+            assert(!(*lowest_entry_ptr & (PRESENT_MASK | WRITEABLE_MASK)));
             *lowest_entry_ptr &= ~DEMAND_MASK;
         }
         else
@@ -170,7 +172,7 @@ uintptr_t get_physical_addr(page_table_t *page_table_ptr, uintptr_t virtual_addr
     pt_level_t pt_level;
     uintptr_t physical_addr;
 
-    physical_addr = (uintptr_t)get_lowest_present_page(page_table_ptr, virtual_addr, &pt_level);
+    physical_addr = (uintptr_t)get_lowest_present_page(page_table_ptr, virtual_addr, &pt_level, NULL);
     if(pt_level != PHYSICAL)
     {
         return 0x0;
@@ -188,7 +190,7 @@ void alloc_virtual_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, bo
     pt_level_t pt_level;
     pt_level_t lowest;
 
-    lowest_entry_ptr = get_lowest_present_page(page_table_ptr, virtual_addr, &pt_level);
+    lowest_entry_ptr = get_lowest_present_page(page_table_ptr, virtual_addr, &pt_level, NULL);
     assert(pt_level != PHYSICAL);
 
     if (alloc_on_demand)
@@ -207,7 +209,7 @@ void alloc_virtual_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, bo
         memset(new_page, 0, PAGE_SIZE);
         *lowest_entry_ptr = (u64)new_page;
         *lowest_entry_ptr |= WRITEABLE_MASK | PRESENT_MASK;
-        lowest_entry_ptr = get_lowest_present_page(page_table_ptr, virtual_addr, &pt_level);
+        lowest_entry_ptr = get_lowest_present_page(page_table_ptr, virtual_addr, &pt_level, NULL);
     }
 
     if (alloc_on_demand)
@@ -219,7 +221,7 @@ void alloc_virtual_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, bo
     }
 }
 
-u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, pt_level_t *pt_level_ptr)
+u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_addr, pt_level_t *pt_level_ptr, u64 **prev_entry_ptr_ptr)
 {
     assert(virtual_addr % PAGE_SIZE == 0);
     assert(pt_level_ptr);
@@ -251,6 +253,7 @@ u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_add
     u64 l3_entry = l3_table[l3_index];
     if (!is_next_page_present(l3_entry))
     {
+        prev_entry_ptr_ptr != NULL ? *prev_entry_ptr_ptr = &l4_table[l4_index] : (void)0;
         *pt_level_ptr = L3;
         return &l3_table[l3_index];
     }
@@ -259,6 +262,7 @@ u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_add
     u64 l2_entry = l2_table[l2_index];
     if(!is_next_page_present(l2_entry))
     {
+        prev_entry_ptr_ptr != NULL ? *prev_entry_ptr_ptr = &l3_table[l3_index] : (void)0;
         *pt_level_ptr = L2;
         return &l2_table[l2_index];
     }
@@ -267,10 +271,12 @@ u64 *get_lowest_present_page(page_table_t *page_table_ptr, uintptr_t virtual_add
     u64 l1_entry = l1_table[l1_index];
     if (!is_next_page_present(l1_entry))
     {
+        prev_entry_ptr_ptr != NULL ? *prev_entry_ptr_ptr = &l2_table[l2_index] : (void)0;
         *pt_level_ptr = L1;
         return &l1_table[l1_index];
     }
 
+    prev_entry_ptr_ptr != NULL ? *prev_entry_ptr_ptr = &l1_table[l1_index] : (void)0;
     *pt_level_ptr = PHYSICAL;
     uintptr_t physical_frame_addr = (uintptr_t)(l1_entry & ~(0xFFF));
     return (u64 *)physical_frame_addr;
@@ -287,6 +293,8 @@ void page_fault_handler(u8 irq_index, u32 error, void *arg)
 
     assert(irq_index == PF_INT_NUM);
 
+    printk("PAGE FAULT\n");
+
     uintptr_t fault_addr;
     page_table_t fault_page_table;
     pt_level_t level;
@@ -297,7 +305,7 @@ void page_fault_handler(u8 irq_index, u32 error, void *arg)
 
     fault_addr -= fault_addr % PAGE_SIZE;
 
-    lowest_entry_ptr = get_lowest_present_page(&fault_page_table, fault_addr, &level);
+    lowest_entry_ptr = get_lowest_present_page(&fault_page_table, fault_addr, &level, NULL);
     assert(lowest_entry_ptr);
 
     if (!(*lowest_entry_ptr & DEMAND_MASK) || level != L1)

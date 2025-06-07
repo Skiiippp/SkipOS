@@ -25,7 +25,7 @@
 //#define RUN_UNIT_TESTS
 //#define RUN_PRINTK_TESTS
 //#define RUN_PF_ALLOC_TESTS
-#define RUN_KMALLOC_TESTS
+//#define RUN_KMALLOC_TESTS
 
 //#define PAUSE
 
